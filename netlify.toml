@@ -1,0 +1,30 @@
+# Netlify build configuration for the NyumbaLink web client.
+# Committing this means the Netlify UI needs almost no manual setup — it reads
+# the build command, publish directory, and Node version from here.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Vite 7 requires Node >= 20.19 or >= 22.12. Pin so the deploy doesn't depend
+  # on whatever Netlify's current default happens to be.
+  NODE_VERSION = "22"
+
+# SPA fallback. This is a client-side-routed React app (BrowserRouter), so every
+# path that isn't a real file must serve index.html and let the router resolve
+# it. Netlify checks for an actual file first, so /assets/* and the favicons are
+# still served directly; only unknown paths like /signup or /browse fall through
+# here. Without this rule, a refresh or direct link to any route but "/" 404s.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Vite fingerprints asset filenames (e.g. index-D-bhR40_.js), so they can be
+# cached forever — a new build produces new names. index.html is intentionally
+# left out so clients always fetch the latest entry point.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

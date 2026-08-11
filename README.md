@@ -45,12 +45,19 @@ npm run dev        # Vite dev server
 | `npm run typecheck` | Types only, no emit |
 | `npm run preview` | Serve the production build locally |
 
+Regenerating the favicons (only needed if the logo changes):
+
+```bash
+python3 scripts/generate-favicons.py   # requires Pillow
+```
+
 ## Project structure
 
 ```
 src/
   main.tsx · App.tsx           # entry + router
   index.css                    # Tailwind + design tokens (light/dark)
+  assets/                      # source logo (not shipped unless imported)
   components/
     brand/Logo.tsx             # inline-SVG mark + wordmark
     layout/                    # SiteHeader, SiteFooter
@@ -65,6 +72,8 @@ src/
   routes/                      # Landing, ChooseRole, SignupDetails, Login,
                                #   Browse, StubPage
 public/                        # favicons, PWA icons, site.webmanifest
+scripts/generate-favicons.py   # regenerates public/ icons from the source logo
+netlify.toml                   # build config + SPA fallback (see Deployment)
 ```
 
 ## Design tokens
@@ -135,3 +144,22 @@ For when the API flows get wired up:
 - **Landlords need profile creation + admin approval** before they can list
   (`403 LANDLORD_NOT_VERIFIED`).
 - Money is integer KES everywhere — no decimals.
+
+## Deployment
+
+Hosted on **Netlify**, deployed from `main` via `netlify.toml` — build command,
+publish directory, and Node version are read from that file, so the Netlify UI
+needs no manual build settings.
+
+The one rule that matters: this is a client-routed SPA (`BrowserRouter`), so
+`netlify.toml` sends every non-file path to `index.html` with a **200** (not a
+301). Without it, refreshing or directly opening `/signup` or `/browse` returns
+Netlify's 404 — the router never gets a chance to resolve the path. Netlify
+checks for a real file first, so `/assets/*` and the favicons are unaffected.
+
+Fingerprinted assets under `/assets/*` get a one-year immutable cache header;
+`index.html` deliberately does not, so clients always fetch the current entry
+point.
+
+See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for first-time setup and custom-domain
+steps.
