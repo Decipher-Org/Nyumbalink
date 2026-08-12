@@ -17,10 +17,13 @@
     "@radix-ui/react-slot": "1.2.3",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "input-otp": "^1.4.2",
     "lucide-react": "0.525.0",
+    "radix-ui": "^1.6.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-router-dom": "^7.18.2",
+    "sonner": "^2.0.8",
     "tailwind-merge": "3.3.1"
   },
   "devDependencies": {
