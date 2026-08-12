@@ -12,6 +12,11 @@ const buttonVariants = cva(
         default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
         accent: "bg-accent text-accent-foreground shadow-sm hover:bg-accent/90",
         outline: "border bg-card text-foreground shadow-xs hover:bg-muted",
+        // For irreversible actions only — archiving, deleting a unit. The fill is
+        // the -solid step rather than --destructive, which cannot carry a label at
+        // this size; see the token comment in index.css.
+        destructive:
+          "bg-destructive-solid text-destructive-on-solid shadow-sm hover:bg-destructive-solid/90",
         outlineAccent: "border border-accent text-accent bg-transparent hover:bg-accent/10",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-muted hover:text-foreground",
