@@ -42,7 +42,7 @@ export const FAQS: FaqEntry[] = [
   {
     question: "Which towns and counties are covered?",
     answer:
-      "NyumbaLink covers more than 40 towns across Kenya, with the deepest coverage in Nairobi, Nakuru, Naivasha, Mombasa, Kisumu and Kilifi. New areas are added as landlords join.",
+      "NyumbaLink is live in Kilifi County, covering Kilifi Town, Mtwapa, Malindi, Watamu, Kikambala, Mariakani, Vipingo and the surrounding areas. More counties follow as landlords join.",
   },
   {
     question: "What if I need help?",
