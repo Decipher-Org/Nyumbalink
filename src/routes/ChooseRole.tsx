@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { parseRoleParam, type SignupRole } from "@/lib/roles";
-import { loginPath } from "@/lib/search-params";
+import { loginPath, safeNextPath } from "@/lib/search-params";
 import { cn } from "@/lib/utils";
 
 type RoleOption = {
@@ -49,7 +49,9 @@ export default function ChooseRole() {
   // Intent from the hero / "List your property" CTAs preselects a card, but
   // stays visible and changeable rather than being applied silently.
   const roleFromUrl = parseRoleParam(searchParams.get("role"));
-  const next = searchParams.get("next");
+  // Dropped here rather than only where it is navigated to, so an off-site value
+  // never survives long enough to be forwarded down the signup chain.
+  const next = safeNextPath(searchParams.get("next"));
 
   function choose(role: SignupRole) {
     const params = new URLSearchParams({ role: role.toLowerCase() });

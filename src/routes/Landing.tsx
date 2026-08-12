@@ -10,7 +10,9 @@ import { CtaBand } from "@/components/landing/CtaBand";
 
 export default function Landing() {
   return (
-    <div className="flex min-h-screen flex-col">
+    // `marketing` opts this tree into Fraunces headings. Application surfaces
+    // (dashboards) omit it and stay on Inter, per the design-system sheet.
+    <div className="marketing flex min-h-screen flex-col">
       <SiteHeader />
       <main className="flex-1">
         <Hero />
