@@ -49,7 +49,7 @@ export const CONTACT_DETAILS = {
 };
 
 export const BRAND_BLURB =
-  "NyumbaLink connects tenants and landlords across Kenya with trusted listings and simple subscriptions.";
+  "NyumbaLink connects tenants and landlords across Kilifi County with trusted listings and simple subscriptions.";
 
 export const SOCIAL_LINKS: {
   label: string;

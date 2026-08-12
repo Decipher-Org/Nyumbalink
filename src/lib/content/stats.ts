@@ -13,7 +13,7 @@ export type Stat = {
 
 export const TRUST_STATS: Stat[] = [
   { value: "1,200+", label: "Active listings", icon: "home" },
-  { value: "40+", label: "Towns covered", icon: "pin" },
+  { value: "20+", label: "Kilifi towns covered", icon: "pin" },
   { value: "5,000+", label: "Happy tenants", icon: "users" },
   { value: "100%", label: "Verified landlords", icon: "shield" },
 ];
@@ -29,16 +29,16 @@ export type Testimonial = {
 export const TESTIMONIALS: Testimonial[] = [
   {
     quote:
-      "I found a neat 2 bedroom in Naivasha within two days. The landlord was responsive and everything was smooth.",
+      "I found a neat 2 bedroom in Mtwapa within two days. The landlord was responsive and everything was smooth.",
     name: "Grace Wanjiku",
-    role: "Tenant, Naivasha",
+    role: "Tenant, Mtwapa",
     initials: "GW",
   },
   {
     quote:
       "NyumbaLink helps me keep my apartments occupied. Updating rent and vacancy is quick and easy.",
     name: "John Mwangi",
-    role: "Landlord, Nairobi",
+    role: "Landlord, Kilifi Town",
     initials: "JM",
   },
 ];

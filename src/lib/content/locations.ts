@@ -1,27 +1,15 @@
 /**
  * Location and price options for the hero search.
  *
- * The backend has no counties/towns endpoint, so these are a static list. The
- * `county` value is what `GET /properties` receives, where it matches
+ * The backend has no counties/towns endpoint, so these are a static list. Since
+ * launch is Kilifi-only, county is no longer a choice — the geography lives in
+ * `kilifi.ts` and is re-exported here so the search plumbing has one import
+ * site. `town` is what varies, and `GET /properties` matches it
  * case-insensitively on a substring.
  */
 
-export const COUNTY_OPTIONS = [
-  "Nairobi",
-  "Mombasa",
-  "Kisumu",
-  "Nakuru",
-  "Naivasha",
-  "Eldoret",
-  "Thika",
-  "Kilifi",
-  "Machakos",
-  "Nyeri",
-  "Kakamega",
-  "Meru",
-] as const;
-
-export const POPULAR_SEARCHES = ["Nairobi", "Naivasha", "Nakuru", "Kilifi", "Kisumu"] as const;
+export { COUNTY, KILIFI_TOWNS, POPULAR_TOWNS } from "./kilifi";
+export type { KilifiTown } from "./kilifi";
 
 export type PriceBracket = {
   /** Stable key used as the <Select> value. */
