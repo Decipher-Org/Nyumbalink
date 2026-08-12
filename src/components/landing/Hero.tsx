@@ -10,20 +10,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { COUNTY_OPTIONS, POPULAR_SEARCHES, PRICE_BRACKETS } from "@/lib/content/locations";
+import { COUNTY, KILIFI_TOWNS, POPULAR_TOWNS, PRICE_BRACKETS } from "@/lib/content/locations";
 import { browsePath, signupPath } from "@/lib/search-params";
 
 export function Hero() {
   const navigate = useNavigate();
-  const [county, setCounty] = useState<string>("");
+  const [town, setTown] = useState<string>("");
   const [priceBracketId, setPriceBracketId] = useState<string>("");
 
   /**
    * Browsing needs a session, so a visitor's criteria ride along in `next` and
-   * are applied to /browse once they have an account.
+   * are applied to /browse once they have an account. County is not part of the
+   * form — `browsePath` pins it to the launch county for every search.
    */
-  function runSearch(nextCounty: string = county) {
-    const destination = browsePath({ county: nextCounty || undefined, priceBracketId: priceBracketId || undefined });
+  function runSearch(nextTown: string = town) {
+    const destination = browsePath({
+      town: nextTown || undefined,
+      priceBracketId: priceBracketId || undefined,
+    });
     navigate(signupPath("tenant", destination));
   }
 
@@ -46,11 +50,11 @@ export function Hero() {
       <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div className="max-w-xl">
           <h1 className="font-serif text-4xl leading-tight font-semibold text-white sm:text-5xl lg:text-6xl">
-            Find your next home with ease
+            Find your next home in {COUNTY}
           </h1>
           <p className="mt-5 text-base leading-relaxed text-white/85 sm:text-lg">
-            NyumbaLink connects tenants and landlords across Kenya. Verified listings, updated
-            daily. Connect directly with landlords you trust.
+            NyumbaLink connects tenants and landlords across {COUNTY} County — from Mtwapa to
+            Malindi. Verified listings, updated daily. Connect directly with landlords you trust.
           </p>
         </div>
 
@@ -64,22 +68,22 @@ export function Hero() {
           >
             <div className="flex-1">
               <label
-                htmlFor="hero-county"
+                htmlFor="hero-town"
                 className="mb-1.5 block text-xs font-medium text-muted-foreground"
               >
-                Where do you want to live?
+                Where in {COUNTY} County?
               </label>
               <div className="relative">
                 <MapPin
                   aria-hidden="true"
                   className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-primary"
                 />
-                <Select value={county} onValueChange={setCounty}>
-                  <SelectTrigger id="hero-county" className="w-full pl-9">
-                    <SelectValue placeholder="County, town or area" />
+                <Select value={town} onValueChange={setTown}>
+                  <SelectTrigger id="hero-town" className="w-full pl-9">
+                    <SelectValue placeholder="Any town or area" />
                   </SelectTrigger>
                   <SelectContent>
-                    {COUNTY_OPTIONS.map((option) => (
+                    {KILIFI_TOWNS.map((option) => (
                       <SelectItem key={option} value={option}>
                         {option}
                       </SelectItem>
@@ -123,13 +127,13 @@ export function Hero() {
           </form>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Popular searches:</span>
-            {POPULAR_SEARCHES.map((place) => (
+            <span className="text-xs font-medium text-muted-foreground">Popular areas:</span>
+            {POPULAR_TOWNS.map((place) => (
               <button
                 key={place}
                 type="button"
                 onClick={() => {
-                  setCounty(place);
+                  setTown(place);
                   runSearch(place);
                 }}
                 className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
