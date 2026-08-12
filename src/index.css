@@ -3,74 +3,134 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Design tokens sampled from the NyumbaLink mockup. Components read these via
-   Tailwind utilities (bg-primary, text-accent) and never hardcode a hex value,
-   so a rebrand or dark mode is a change here rather than a sweep of every file. */
+/* Design tokens transcribed from the NyumbaLink design-system sheet.
+   Values are kept as the sheet's literal hexes rather than converted to oklch so
+   a reviewer can diff them against the mockup by eye. Components read these via
+   Tailwind utilities (bg-primary, text-accent) and never hardcode a colour, so a
+   rebrand or dark mode is a change here rather than a sweep of every file. */
 :root {
   --radius: 0.75rem;
 
-  --background: oklch(0.984 0.006 84.6); /* cream page ground */
-  --foreground: oklch(0.268 0.012 158.1); /* near-black green text */
+  /* Neutrals */
+  --background: #f1efe8;
+  --foreground: #2c2c2a; /* Text Primary */
+  --muted-foreground: #5f5e5a; /* Text Secondary */
 
-  --card: oklch(1 0 0);
+  --card: #ffffff;
   --card-foreground: var(--foreground);
-  --popover: oklch(1 0 0);
+  --popover: #ffffff;
   --popover-foreground: var(--foreground);
-
-  --primary: oklch(0.395 0.077 172.4); /* deep green #0E5A46 */
-  --primary-foreground: oklch(0.985 0.004 106.4);
-
-  --secondary: oklch(0.947 0.021 158.7); /* mint band */
-  --secondary-foreground: oklch(0.353 0.063 172.1);
-
-  --accent: oklch(0.638 0.212 33.9); /* orange #F1592A */
-  --accent-foreground: oklch(0.985 0.004 106.4);
-
-  --muted: oklch(0.955 0.012 106.9);
-  --muted-foreground: oklch(0.512 0.017 154.2);
-
-  /* Softer surfaces the mockup uses to separate the two pricing cards. */
-  --mint: oklch(0.957 0.021 159.4);
-  --peach: oklch(0.964 0.019 46.8);
-  /* Warm off-white for cards that sit on the cream ground — reads as raised
+  /* Warm off-white for cards raised over the page ground — reads as lifted
      without the hard contrast of pure-white --card. */
-  --surface: oklch(0.993 0.004 92.1);
+  --surface: #f8f7f2;
+  --muted: #e9e7df;
 
-  --destructive: oklch(0.577 0.245 27.3);
-  --border: oklch(0.909 0.013 143.1);
-  --input: oklch(0.909 0.013 143.1);
-  --ring: oklch(0.395 0.077 172.4);
+  /* Brand — teal */
+  --primary: #0f6e56; /* Deep Teal */
+  --primary-foreground: #ffffff;
+  --primary-mid: #1d9e75; /* Mid Teal — charts, hover, accents on dark */
+  --secondary: #e1f5ee; /* Light Teal */
+  --secondary-foreground: #0f6e56;
+  --mint: #e1f5ee; /* alias kept so existing landing sections keep compiling */
+
+  /* Brand — coral */
+  --accent: #d85a30; /* Coral */
+  --accent-foreground: #ffffff;
+  --accent-soft: #f5c4b3; /* Light Coral */
+  --peach: #f5c4b3; /* alias for the landing pricing cards */
+  /* Ink for text on --accent-soft. It cannot be --accent-foreground: that white
+     is for the solid coral fill and lands at 1.6:1 on the tint. Light Coral is a
+     much heavier tint than the pale status softs, so this steps two stops darker
+     than their -700 convention — orange-700 only manages 3.3:1 here. 6.0:1. */
+  --accent-strong: #7c2d12;
+
+  /* Status. Each has a soft background and a strong text tone so a badge can be
+     tint-on-dark-text and still clear WCAG AA, which solid-on-white does not. */
+  --success: #22c55e;
+  --success-soft: #dcfce7;
+  --success-strong: #15803d;
+
+  --warning: #f59e0b;
+  --warning-soft: #fef3c7;
+  --warning-strong: #b45309;
+
+  --destructive: #ef4444;
+  --destructive-soft: #fee2e2;
+  --destructive-strong: #b91c1c;
+  /* The one status colour that also has to work as a filled button. #ef4444
+     carries white at 3.8:1, so the solid fill steps down to the strong tone,
+     which carries it at 6.5:1. */
+  --destructive-solid: #b91c1c;
+  --destructive-on-solid: #ffffff;
+
+  --info: #3b82f6;
+  --info-soft: #dbeafe;
+  --info-strong: #1d4ed8;
+
+  --inactive: #9ca3af;
+  --inactive-soft: #f3f4f6;
+  --inactive-strong: #4b5563;
+
+  --border: #dedbd1;
+  --input: #dedbd1;
+  --ring: #0f6e56;
 }
 
 .dark {
-  --background: oklch(0.216 0.011 158.4);
-  --foreground: oklch(0.968 0.006 106.5);
+  --background: #1a1c1b;
+  --foreground: #f2f1ec;
+  --muted-foreground: #a8a7a1;
 
-  --card: oklch(0.268 0.014 160.2);
+  --card: #232624;
   --card-foreground: var(--foreground);
-  --popover: oklch(0.268 0.014 160.2);
+  --popover: #232624;
   --popover-foreground: var(--foreground);
+  --surface: #1f2220;
+  --muted: #2c302e;
 
-  --primary: oklch(0.652 0.104 168.9);
-  --primary-foreground: oklch(0.204 0.012 160.1);
+  /* Deep Teal is too dark to carry text on a dark ground; Mid Teal is the
+     sheet's own lighter step, so dark mode promotes it to primary. */
+  --primary: #1d9e75;
+  --primary-foreground: #08211a;
+  --primary-mid: #2fbc8e;
+  --secondary: #16342a;
+  --secondary-foreground: #cdeee2;
+  --mint: #16342a;
 
-  --secondary: oklch(0.318 0.028 165.3);
-  --secondary-foreground: oklch(0.952 0.008 106.5);
+  --accent: #e57249;
+  --accent-foreground: #2a0f06;
+  --accent-soft: #4a2418;
+  --peach: #4a2418;
+  /* Inverted like the other dark strongs: light ink on the dark tint (8.0:1). */
+  --accent-strong: #fdba74;
 
-  --accent: oklch(0.678 0.196 35.2);
-  --accent-foreground: oklch(0.204 0.012 160.1);
+  --success: #34d399;
+  --success-soft: #10281f;
+  --success-strong: #6ee7b7;
 
-  --muted: oklch(0.312 0.014 159.6);
-  --muted-foreground: oklch(0.716 0.016 154.8);
+  --warning: #fbbf24;
+  --warning-soft: #2a2010;
+  --warning-strong: #fcd34d;
 
-  --mint: oklch(0.298 0.026 164.1);
-  --peach: oklch(0.312 0.032 45.7);
-  --surface: oklch(0.252 0.013 159.2);
+  --destructive: #f87171;
+  --destructive-soft: #2d1414;
+  --destructive-strong: #fca5a5;
+  /* Inverted on a dark ground: the light red is the fill and the ink goes dark
+     (6.6:1). Reusing --destructive-strong here would be white-on-#fca5a5. */
+  --destructive-solid: #f87171;
+  --destructive-on-solid: #2d0a0a;
 
-  --destructive: oklch(0.704 0.191 22.2);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.652 0.104 168.9);
+  --info: #60a5fa;
+  --info-soft: #131f33;
+  --info-strong: #93c5fd;
+
+  --inactive: #9ca3af;
+  --inactive-soft: #26292b;
+  --inactive-strong: #cbd5e1;
+
+  --border: rgb(255 255 255 / 12%);
+  --input: rgb(255 255 255 / 16%);
+  --ring: #1d9e75;
 }
 
 @theme inline {
@@ -87,22 +147,60 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-mid: var(--primary-mid);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-strong: var(--accent-strong);
   --color-mint: var(--mint);
   --color-peach: var(--peach);
   --color-surface: var(--surface);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-strong: var(--success-strong);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-strong: var(--warning-strong);
   --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-strong: var(--destructive-strong);
+  --color-destructive-solid: var(--destructive-solid);
+  --color-destructive-on-solid: var(--destructive-on-solid);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-strong: var(--info-strong);
+  --color-inactive: var(--inactive);
+  --color-inactive-soft: var(--inactive-soft);
+  --color-inactive-strong: var(--inactive-strong);
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Fraunces", ui-serif, Georgia, serif;
+
+  /* The OTP input draws its own caret (the real one is hidden). Without this
+     Tailwind never emits `animate-caret-blink` and the bar sits there static,
+     which reads as a rendering artefact rather than a cursor. */
+  --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+}
+
+@keyframes caret-blink {
+  0%,
+  70%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  50% {
+    opacity: 0;
+  }
 }
 
 @layer base {
@@ -114,9 +212,47 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 
-  /* Section headings in the mockup are a warm serif; body copy stays sans. */
-  h1,
-  h2 {
+  /* Fraunces is scoped to marketing. The design-system sheet specifies Inter for
+     every application surface, so the serif lives behind .marketing (set by the
+     landing/marketing layout) instead of on a bare h1/h2 selector — otherwise it
+     would leak into dashboard headings. */
+  .marketing h1,
+  .marketing h2 {
     @apply font-serif;
   }
+}
+
+/* Application type scale, exactly as the design-system sheet specifies.
+   Deliberately opt-in utilities rather than global element styles: the marketing
+   pages use Tailwind's own larger display sizes, and forcing a 28px h1 globally
+   would shrink the landing hero. Dashboard surfaces use these. */
+@utility text-h1 {
+  font-size: 1.75rem; /* 28px */
+  line-height: 2.125rem;
+  font-weight: 700;
+}
+@utility text-h2 {
+  font-size: 1.375rem; /* 22px */
+  line-height: 1.75rem;
+  font-weight: 600;
+}
+@utility text-h3 {
+  font-size: 1.125rem; /* 18px */
+  line-height: 1.5rem;
+  font-weight: 600;
+}
+@utility text-body {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem;
+  font-weight: 400;
+}
+@utility text-body-sm {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem;
+  font-weight: 400;
+}
+@utility text-caption {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem;
+  font-weight: 400;
 }
