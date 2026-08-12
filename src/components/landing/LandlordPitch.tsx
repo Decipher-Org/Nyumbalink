@@ -33,7 +33,7 @@ function ListingStatusCard() {
         </span>
         <div>
           <p className="font-serif text-lg font-semibold">Sunrise Apartments</p>
-          <p className="text-sm text-muted-foreground">Kilimani, Nairobi · 12 units</p>
+          <p className="text-sm text-muted-foreground">Mnarani, Kilifi · 12 units</p>
         </div>
       </div>
 

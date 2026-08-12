@@ -28,7 +28,7 @@ export function TrustStats() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Why NyumbaLink"
-          title="Trusted by tenants and landlords across Kenya"
+          title="Trusted by tenants and landlords across Kilifi"
           subtitle="No agents, no surprises. Every listing is verified, every contact is direct."
         />
 
