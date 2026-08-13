@@ -10,6 +10,8 @@
   # Vite 7 requires Node >= 20.19 or >= 22.12. Pin so the deploy doesn't depend
   # on whatever Netlify's current default happens to be.
   NODE_VERSION = "22"
+  # Vite embeds this public API origin into the production JavaScript bundle.
+  VITE_API_URL = "https://api.nyumbalink.co.ke"
 
 # SPA fallback. This is a client-side-routed React app (BrowserRouter), so every
 # path that isn't a real file must serve index.html and let the router resolve
