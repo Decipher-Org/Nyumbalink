@@ -117,12 +117,13 @@ everywhere.
 
 Two things will need attention on the first deploy that talks to the backend:
 
-- **`VITE_API_URL`** (or whatever the client reads) set under **Site
+- **`VITE_API_URL=https://api.nyumbalink.co.ke`** set under **Site
   configuration → Environment variables**. Vite inlines `VITE_*` values at
   **build** time, so changing one requires a redeploy — it is not read at
   runtime. Anything in a `VITE_*` variable ships to the browser in plain text;
   never put a secret there.
-- **CORS on the backend** must allow the deployed origin. Note that Netlify
+- **CORS on the backend** must allow `https://nyumbalink.co.ke`, and Better
+  Auth must trust that same browser origin (`BETTER_AUTH_TRUSTED_ORIGINS`). Note that Netlify
   gives every PR its own preview URL, so either allow the `*.netlify.app`
   preview pattern or accept that previews can't reach the API.
 
