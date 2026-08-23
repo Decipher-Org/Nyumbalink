@@ -125,6 +125,26 @@ function handleUnauthorized(): void {
   clearSession();
 }
 
+/**
+ * Fired when the backend refuses a tenant read for want of a browsing pass.
+ *
+ * `TenantAccessProvider` is the primary gate and decides from `expiresAt`, so this
+ * is a **backstop, not the mechanism**: it exists because the provider trusts the
+ * browser's clock and the server trusts its own. A client running a few minutes
+ * behind would keep rendering listings while every request came back 403, and the
+ * user would see a broken page rather than the paywall.
+ *
+ * Dispatched as an event for the same reason `SESSION_CLEARED_EVENT` is — this is
+ * the API client, which has no router and no provider to call into.
+ */
+export const TENANT_ACCESS_LAPSED_EVENT = "nyumbalink:tenant-access-lapsed";
+
+function handleTenantAccessLapsed(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(TENANT_ACCESS_LAPSED_EVENT));
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -148,6 +168,9 @@ export async function apiFetchPaged<T>(
   if (!res.ok) {
     if (res.status === 401) handleUnauthorized();
     const error = isRecord(payload) && isRecord(payload.error) ? payload.error : {};
+    if (res.status === 403 && error.code === "TENANT_SUBSCRIPTION_EXPIRED") {
+      handleTenantAccessLapsed();
+    }
     throw new ApiError(
       res.status,
       typeof error.code === "string" ? error.code : "UNKNOWN_ERROR",
