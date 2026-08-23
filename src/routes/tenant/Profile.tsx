@@ -12,6 +12,7 @@ import { DemoBadge } from "@/components/app/DemoBadge";
 import { PageHeader } from "@/components/app/PageHeader";
 import { ErrorState } from "@/components/app/States";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,8 +35,9 @@ import {
 import type { Gender, TenantProfile as TenantProfileRecord } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useFavourites } from "@/lib/demo/favourites";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTimeLeft } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
+import { useTenantAccess } from "@/lib/subscriptions/TenantAccessProvider";
 
 /**
  * The tenant's own profile, and their account.
@@ -56,12 +58,11 @@ import { useAsync } from "@/lib/hooks/use-async";
  * `components/app/AccountSettings.tsx` — the same components the landlord's
  * Settings screen uses.
  *
- * ## Subscription
+ * ## The browsing pass
  *
- * `profile.subscription` is a real field returning a hardcoded constant until
- * Milestone 5. Rendering "INACTIVE" would read as an account restriction that
- * doesn't exist, so the card says what is actually true — browsing is free and
- * ungated — behind a demo marker.
+ * The card at the bottom reads `useTenantAccess()`, not `profile.subscription` —
+ * the profile is optional and 404s for most tenants, so it cannot answer whether
+ * someone may browse. See `BrowsingPassCard` below.
  */
 
 const GENDER_LABELS: Record<Gender, string> = {
@@ -335,24 +336,7 @@ export default function TenantProfile() {
               </div>
             </section>
 
-            {/* A real field holding a placeholder constant — see the header note. */}
-            <section className="rounded-xl border border-border bg-surface p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
-                    <Sparkles aria-hidden="true" className="size-5 text-primary" />
-                  </span>
-                  <div>
-                    <h2 className="text-h3 text-foreground">Browsing</h2>
-                    <p className="mt-1 text-body-sm text-muted-foreground">
-                      Free and unlimited while we get started. No plan, nothing to pay, and no
-                      listing is held back from you.
-                    </p>
-                  </div>
-                </div>
-                <DemoBadge feature="subscriptions" />
-              </div>
-            </section>
+            <BrowsingPassCard />
           </div>
         </div>
 
@@ -363,6 +347,64 @@ export default function TenantProfile() {
         <DeactivateSection keeps="Your details are kept, and nothing you saved is deleted." />
       </div>
     </>
+  );
+}
+
+/**
+ * The pass, as the tenant's own account sees it.
+ *
+ * Reads `useTenantAccess()` rather than `profile.subscription`, even though the
+ * profile now carries a real one. Two reasons: the profile 404s for most tenants
+ * (see this file's header note), so it cannot be the source of truth for whether
+ * someone can browse; and the provider already holds a live value with an expiry
+ * timer on it, so this card lapses at the same instant the gate does instead of
+ * showing a stale "active" until the next reload.
+ */
+function BrowsingPassCard() {
+  const access = useTenantAccess();
+
+  // A landlord or admin reading this screen has no pass and owes nothing. Saying
+  // anything at all about passes here would invent a bill.
+  if (access.exempt) return null;
+
+  return (
+    <section className="rounded-xl border border-border bg-surface p-5">
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
+          <Sparkles aria-hidden="true" className="size-5 text-primary" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-h3 text-foreground">Browsing pass</h2>
+            {access.loading ? null : (
+              <Badge variant={access.active ? "default" : "outline"}>
+                {access.active ? "Active" : "Not active"}
+              </Badge>
+            )}
+          </div>
+
+          {access.loading ? (
+            <Skeleton className="mt-2 h-4 w-56" />
+          ) : access.active ? (
+            <p className="mt-1 text-body-sm text-muted-foreground">
+              {formatTimeLeft(access.expiresAt)} — expires {formatDate(access.expiresAt)}. Buying
+              again before then adds to this, so you keep the time you've paid for.
+            </p>
+          ) : (
+            <p className="mt-1 text-body-sm text-muted-foreground">
+              You need a pass to see listings. Your account, chats and saved details stay
+              available either way.
+            </p>
+          )}
+
+          {access.active ? null : (
+            <Button asChild size="sm" className="mt-3">
+              <Link to="/tenant/search">Get a pass</Link>
+            </Button>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 

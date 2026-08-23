@@ -192,11 +192,22 @@ export default function TenantOnboarding() {
           </div>
         </section>
 
+        {/*
+          This read "Browsing every listing in Kilifi County is free while we get
+          started. There's nothing to pay and nothing held back." Onboarding is the last
+          screen before the gate, so that sentence was setting up the paywall on the very
+          next click to look like a bait-and-switch.
+
+          It names no figure on purpose. The price belongs to the server, and
+          `AccessRequired` renders it from `GET /subscriptions/tenant`; quoting a literal
+          here would contradict it in development, where the backend runs `PRICE_*=1`.
+        */}
         <div className="flex items-start gap-3 rounded-xl border border-border bg-surface px-4 py-3.5">
           <Sparkles aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
           <p className="text-body-sm text-muted-foreground">
-            Browsing every listing in {COUNTY} County is free while we get started. There's nothing
-            to pay and nothing held back.
+            Next you'll pick up a day pass — one M-Pesa payment opens every listing in {COUNTY}{" "}
+            County for 24 hours, with nothing held back. It simply lapses when the day is up, so
+            there is nothing to cancel.
           </p>
         </div>
 
@@ -209,7 +220,7 @@ export default function TenantOnboarding() {
               </>
             ) : (
               <>
-                Save and browse
+                Save and continue
                 <ArrowRight />
               </>
             )}
