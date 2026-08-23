@@ -22,6 +22,19 @@
  * someone their payment failed and then taking their money is the worst outcome
  * available here.
  *
+ * ## Resolving a timeout, rather than describing it
+ *
+ * `recheck` is the way out of that phase, and it is not simply more polling. It
+ * calls `POST /payments/:id/reconcile`, which asks PayHero what actually happened
+ * and runs the same settlement path the lost callback would have — the difference
+ * between "we still don't know" and "we asked the only party who does". Lost M-Pesa
+ * callbacks are routine, so this is the normal way a real payment gets finished, not
+ * an error path.
+ *
+ * It belongs here rather than on a payment-history screen because the person who
+ * needs it is standing in front of the dialog. A tenant has no history screen at
+ * all, so "check your payments in a minute" was a dead end dressed as guidance.
+ *
  * ## Why `reused` is surfaced
  *
  * The backend collapses a repeated initiate onto the payment already in flight
@@ -33,7 +46,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError } from "@/lib/api/client";
-import { getPayment } from "@/lib/api/payments";
+import { getPayment, reconcilePayment } from "@/lib/api/payments";
 import { isTerminalPayment, RESULT_CODE, type Payment, type PaymentInitiation } from "@/lib/api/types";
 
 /** How often to re-read the payment. */
@@ -68,7 +81,17 @@ export type StkResult = {
   /** Ready-to-render explanation of a `failed` payment. Null otherwise. */
   failureMessage: string | null;
   busy: boolean;
+  /** True while `recheck` is asking the gateway. */
+  rechecking: boolean;
+  /**
+   * What a `recheck` found when it did not settle anything — the backend's own
+   * wording, which separates "never reached the provider" from "not recognised yet".
+   * Also carries the reason a check could not be made at all. Null until then.
+   */
+  recheckMessage: string | null;
   start: (initiate: () => Promise<PaymentInitiation>) => Promise<void>;
+  /** Ask the gateway what happened. For a run that timed out — see the header. */
+  recheck: () => Promise<void>;
   reset: () => void;
 };
 
@@ -105,6 +128,8 @@ export function useStkPayment(): StkResult {
   const [payment, setPayment] = useState<Payment | null>(null);
   const [reused, setReused] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [rechecking, setRechecking] = useState(false);
+  const [recheckMessage, setRecheckMessage] = useState<string | null>(null);
 
   /**
    * One controller per run, aborted on unmount and on `reset`. Without it a poll
@@ -113,17 +138,27 @@ export function useStkPayment(): StkResult {
    */
   const runRef = useRef<AbortController | null>(null);
 
+  /** The same, for a reconcile. Separate because it runs after the poll has ended. */
+  const recheckRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
-    return () => runRef.current?.abort();
+    return () => {
+      runRef.current?.abort();
+      recheckRef.current?.abort();
+    };
   }, []);
 
   const reset = useCallback(() => {
     runRef.current?.abort();
     runRef.current = null;
+    recheckRef.current?.abort();
+    recheckRef.current = null;
     setPhase("idle");
     setPayment(null);
     setReused(false);
     setError(null);
+    setRechecking(false);
+    setRecheckMessage(null);
   }, []);
 
   const start = useCallback(async (initiate: () => Promise<PaymentInitiation>) => {
@@ -203,6 +238,55 @@ export function useStkPayment(): StkResult {
     setPhase("timeout");
   }, []);
 
+  /**
+   * Deliberately *not* stable across renders — it closes over `payment`, so its
+   * identity changes as the poll updates. That is safe because it is only ever called
+   * from a click handler. `reset` is the one that has to stay stable, because
+   * `StkCheckoutDialog` lists it in a dependency array.
+   */
+  const recheck = useCallback(async () => {
+    // No payment means the *initiate* never returned one, so there is nothing at the
+    // gateway to ask about. A second attempt is the only way forward there.
+    if (!payment || recheckRef.current) return;
+
+    const controller = new AbortController();
+    recheckRef.current = controller;
+    setRechecking(true);
+    setRecheckMessage(null);
+
+    try {
+      const result = await reconcilePayment(payment.id, controller.signal);
+      if (controller.signal.aborted) return;
+
+      setPayment(result.payment);
+
+      // Branching on the status rather than on `applied`: a reconcile can apply a
+      // settlement that turns out to be a failure, and what the user needs to know is
+      // the outcome, not whether our records moved.
+      if (isTerminalPayment(result.payment.status)) {
+        setPhase(result.payment.status === "SUCCESS" ? "success" : "failed");
+        return;
+      }
+
+      // Nothing settled, which is not an error. The gateway had no news either, so the
+      // payment is genuinely still in flight and the backend's own wording is the
+      // honest report — it distinguishes a payment that never reached the provider
+      // (start again) from one not recognised yet (wait), which need opposite actions.
+      setRecheckMessage(result.message ?? "Still awaiting confirmation from M-Pesa.");
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      // Staying in `timeout` is the point. Failing to reach the gateway tells us
+      // nothing about the payment, so demoting it to `failed` would claim an outcome
+      // we do not have — and this phase exists precisely to avoid that claim.
+      setRecheckMessage(
+        err instanceof ApiError ? err.message : "Couldn't reach M-Pesa to check this.",
+      );
+    } finally {
+      recheckRef.current = null;
+      if (!controller.signal.aborted) setRechecking(false);
+    }
+  }, [payment]);
+
   return {
     phase,
     payment,
@@ -215,7 +299,10 @@ export function useStkPayment(): StkResult {
           ? error.message
           : null,
     busy: phase === "starting" || phase === "polling",
+    rechecking,
+    recheckMessage,
     start,
+    recheck,
     reset,
   };
 }

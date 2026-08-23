@@ -8,6 +8,15 @@
  * prompt when the backend reused one already in flight. `use-stk-payment` owns the
  * state machine; this renders it.
  *
+ * ## A timeout ends in a button, not an instruction
+ *
+ * The one state with no natural resolution is `timeout`: the prompt may still be live
+ * and we have stopped watching. Telling someone to go and check their history later
+ * puts the work on them at the moment they are least sure what happened, so this
+ * offers **Check status** instead — `stk.recheck()`, which asks the gateway directly
+ * and settles the payment if it can. A success from there flows through the same
+ * `onSettled` path as a normal one, so the caller's state refreshes either way.
+ *
  * ## The amount shown here is the server's
  *
  * Callers pass the figure they got from a quote, and it is displayed, never
@@ -62,7 +71,12 @@ export function StkCheckoutDialog({
   lines?: CheckoutLine[];
   /** The account's verified number, prefilled. */
   defaultPhone?: string | null;
-  /** Where "check your history" points. Omit to hide that link. */
+  /**
+   * Where "see all your payments" points, shown alongside the status check on a
+   * timeout. Omit to hide it — the tenant checkout does, because the tenant app has no
+   * payment history screen and "Check status" already answers the only question that
+   * matters about this one payment.
+   */
   paymentsHref?: string;
   initiate: (phoneNumber: string | undefined) => Promise<PaymentInitiation>;
   /** Called once, after a payment settles as SUCCESS. Refresh state here. */
@@ -115,8 +129,13 @@ export function StkCheckoutDialog({
     void stk.start(() => initiate(normalised));
   }
 
-  /** A settled run must not be dismissed by an outside click before it registers. */
-  const dismissable = !stk.busy;
+  /**
+   * A settled run must not be dismissed by an outside click before it registers, and
+   * neither must a status check the user just asked for. The footer's own Close button
+   * calls `onOpenChange` directly and so still works throughout — this only stops a
+   * stray click or Esc from throwing away an answer that is one second away.
+   */
+  const dismissable = !stk.busy && !stk.rechecking;
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : dismissable && onOpenChange(false))}>
@@ -189,15 +208,18 @@ export function StkCheckoutDialog({
         {stk.phase === "timeout" ? (
           <Status icon={<Clock className="size-5" />} tone="warning" title="Still processing">
             We stopped waiting, but the request may still be on your phone — and it can
-            still go through after this closes.{" "}
+            still go through after this closes. Check the status below rather than paying
+            again, so you don't pay twice.
+            {stk.recheckMessage ? (
+              <span className="mt-2 block font-medium">{stk.recheckMessage}</span>
+            ) : null}
             {paymentsHref ? (
-              <Link to={paymentsHref} className="font-medium underline">
-                Check your payments
-              </Link>
-            ) : (
-              "Check your payment history"
-            )}{" "}
-            in a minute before trying again, so you don't pay twice.
+              <span className="mt-2 block">
+                <Link to={paymentsHref} className="font-medium underline">
+                  Or see all your payments
+                </Link>
+              </span>
+            ) : null}
           </Status>
         ) : null}
 
@@ -230,9 +252,21 @@ export function StkCheckoutDialog({
           ) : null}
 
           {stk.phase === "timeout" ? (
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+              <Button onClick={() => void stk.recheck()} disabled={stk.rechecking}>
+                {stk.rechecking ? (
+                  <>
+                    <Loader2 className="animate-spin" />
+                    Checking…
+                  </>
+                ) : (
+                  "Check status"
+                )}
+              </Button>
+            </>
           ) : null}
         </DialogFooter>
       </DialogContent>
