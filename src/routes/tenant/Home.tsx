@@ -1,4 +1,4 @@
-import { ArrowRight, Home as HomeIcon, Search, Sparkles } from "lucide-react";
+import { ArrowRight, Clock, Home as HomeIcon, Search } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -10,9 +10,10 @@ import { listProperties } from "@/lib/api/properties";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { COUNTY, POPULAR_TOWNS } from "@/lib/content/kilifi";
 import { PRICE_BRACKETS } from "@/lib/content/locations";
-import { DEMO_BROWSE_GATE } from "@/lib/demo/tenant";
+import { formatDateTime, formatTimeLeft } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
 import { tenantSearchPath } from "@/lib/search-params";
+import { useTenantAccess } from "@/lib/subscriptions/TenantAccessProvider";
 
 /**
  * The tenant home screen.
@@ -28,8 +29,8 @@ import { tenantSearchPath } from "@/lib/search-params";
  *
  * The town and price shortcuts are real too: both expand into query params
  * `GET /properties` genuinely supports, via the same builder the marketing hero
- * uses. The only sample content is the daily-pass banner, which is informational
- * and blocks nothing.
+ * uses. Since M5 the closing strip is real as well — it reads the live pass from
+ * `useTenantAccess()` rather than the demo banner that used to sit there.
  */
 
 const NEWEST_LIMIT = 8;
@@ -164,18 +165,48 @@ export default function TenantHome() {
         </div>
       </section>
 
-      {/* Informational, not a gate. See the note in lib/demo/tenant.ts. */}
-      <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 sm:flex-row sm:items-center">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
-          <Sparkles aria-hidden="true" className="size-5 text-primary" />
-        </span>
-        <div className="flex-1">
-          <p className="text-body font-semibold text-foreground">
-            Browsing is free while we get started
-          </p>
-          <p className="mt-0.5 text-body-sm text-muted-foreground">{DEMO_BROWSE_GATE.note}</p>
-        </div>
-      </section>
+      {/* Real: the pass this account is browsing on. See `PassStrip` below. */}
+      <PassStrip />
     </div>
+  );
+}
+
+/**
+ * How much of the day pass is left.
+ *
+ * This slot held a demo banner reading "Browsing is free while we get started" — true
+ * until M5, and false the moment the gate went in. The strip was worth keeping rather
+ * than deleting because the one thing a tenant on a 24-hour pass cannot find out
+ * anywhere else on this screen is when it runs out.
+ *
+ * `exempt` renders nothing at all: a landlord who lands here never bought a pass, and
+ * a countdown on one would be a bill they do not owe.
+ *
+ * The figure is a snapshot rather than a ticking clock, deliberately — the provider
+ * holds a `setTimeout` to the exact `expiresAt` and unmounts this whole subtree when it
+ * fires, so a stale "20m left" can never decay into a wrong one.
+ */
+function PassStrip() {
+  const { exempt, expiresAt, loading } = useTenantAccess();
+
+  // No skeleton: the gate wrapping this route already awaited the same fetch, so it is
+  // resolved before the page paints. The guard covers the re-read after a purchase.
+  if (loading || exempt || !expiresAt) return null;
+
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 sm:flex-row sm:items-center">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
+        <Clock aria-hidden="true" className="size-5 text-primary" />
+      </span>
+      <div className="flex-1">
+        <p className="text-body font-semibold text-foreground">
+          Your day pass — {formatTimeLeft(expiresAt)}
+        </p>
+        <p className="mt-0.5 text-body-sm text-muted-foreground">
+          Every listing in {COUNTY} County is open to you until {formatDateTime(expiresAt)}. Buying
+          another pass before then adds to the time you have left rather than replacing it.
+        </p>
+      </div>
+    </section>
   );
 }

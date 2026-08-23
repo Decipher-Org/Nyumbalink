@@ -1,9 +1,11 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "@/components/app/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { GuestOnlyRoute, ProtectedRoute } from "@/lib/auth/ProtectedRoute";
+import { RequireTenantAccess } from "@/lib/subscriptions/RequireTenantAccess";
+import { TenantAccessProvider } from "@/lib/subscriptions/TenantAccessProvider";
 import Landing from "@/routes/Landing";
 import ChooseRole from "@/routes/ChooseRole";
 import SignupDetails from "@/routes/SignupDetails";
@@ -87,14 +89,36 @@ export default function App() {
               profile gates nothing, so there is no state where the app must stop
               them from looking around. */}
           <Route element={<ProtectedRoute role="TENANT" />}>
-            <Route path="/tenant" element={<AppShell role="TENANT" />}>
-              <Route index element={<TenantHome />} />
-              <Route path="onboarding" element={<TenantOnboarding />} />
-              <Route path="search" element={<TenantSearch />} />
-              <Route path="properties/:propertyId" element={<TenantPropertyDetails />} />
-              <Route path="favorites" element={<TenantFavourites />} />
-              <Route path="chats" element={<TenantChats />} />
-              <Route path="profile" element={<TenantProfile />} />
+            {/* The browsing pass is fetched once here, not per screen. Scoped to
+                the tenant tree rather than hoisted to <AuthProvider> so a
+                landlord never spends a request being told they're exempt. */}
+            <Route
+              element={
+                <TenantAccessProvider>
+                  <Outlet />
+                </TenantAccessProvider>
+              }
+            >
+              <Route path="/tenant" element={<AppShell role="TENANT" />}>
+                {/* Outside the pass gate, deliberately: someone's own account
+                    details — and the sign-out button in this shell — must not be
+                    locked behind a payment. Chats are excluded too, because a
+                    conversation already started belongs to the tenant, and the
+                    backend does not gate it either. */}
+                <Route path="onboarding" element={<TenantOnboarding />} />
+                <Route path="chats" element={<TenantChats />} />
+                <Route path="profile" element={<TenantProfile />} />
+
+                {/* The catalogue. These four are exactly what
+                    `requireTenantAccess` guards on the backend, so the gate here
+                    and the middleware there cover the same ground. */}
+                <Route element={<RequireTenantAccess />}>
+                  <Route index element={<TenantHome />} />
+                  <Route path="search" element={<TenantSearch />} />
+                  <Route path="properties/:propertyId" element={<TenantPropertyDetails />} />
+                  <Route path="favorites" element={<TenantFavourites />} />
+                </Route>
+              </Route>
             </Route>
           </Route>
 

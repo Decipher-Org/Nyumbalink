@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { SectionHeading } from "./SectionHeading";
 import { Button } from "@/components/ui/button";
+import { LANDLORD_PRICING, formatKes } from "@/lib/content/pricing";
 import { signupPath } from "@/lib/search-params";
 
 const LANDLORD_BENEFITS = [
@@ -19,8 +20,8 @@ const LANDLORD_BENEFITS = [
     description: "Track vacancies, units, and enquiries across all your properties in one place.",
   },
   {
-    title: "Free to start",
-    description: "The Basic tier costs nothing to list. Upgrade only when your portfolio grows.",
+    title: "Pay for what you list",
+    description: `KSh ${formatKes(LANDLORD_PRICING.unitPrice)} per rentable unit for ${LANDLORD_PRICING.termDays} days, per property — no tiers and no property limits.`,
   },
 ];
 

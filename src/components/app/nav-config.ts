@@ -37,13 +37,8 @@ export const LANDLORD_NAV: NavItem[] = [
   { to: "/landlord", label: "Dashboard", icon: LayoutDashboard, primary: true },
   { to: "/landlord/properties", label: "Properties", icon: Building2, primary: true },
   { to: "/landlord/units", label: "Units", icon: Home, primary: true },
-  {
-    to: "/landlord/subscriptions",
-    label: "Subscription",
-    icon: Wallet,
-    demo: "subscriptions",
-  },
-  { to: "/landlord/payments", label: "Payments", icon: CreditCard, demo: "payments" },
+  { to: "/landlord/subscriptions", label: "Subscription", icon: Wallet },
+  { to: "/landlord/payments", label: "Payments", icon: CreditCard },
   {
     to: "/landlord/notifications",
     label: "Notifications",

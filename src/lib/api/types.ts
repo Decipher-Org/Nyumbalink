@@ -52,9 +52,14 @@ export type LandlordProfile = {
   profilePhoto: string | null;
   /** Admin-controlled. Property writes are `403 LANDLORD_NOT_VERIFIED` until true. */
   verified: boolean;
-  /** Placeholder until Milestone 5; the backend returns a constant "PENDING". */
-  subscriptionStatus: string;
-  /** Placeholder; the backend returns a constant 0. Derive real counts from the list. */
+  /**
+   * Milestone 5 replaced `subscriptionStatus` with this breakdown rather than
+   * filling the old field in, because subscriptions are **per property**: a
+   * landlord with four blocks — two paid, one lapsed, one still a draft — has no
+   * single status. `GET /subscriptions/landlord` has the per-property detail.
+   */
+  subscriptions: { properties: number; active: number; lapsed: number };
+  /** Real since Milestone 3; equals `subscriptions.properties`. */
   propertiesCount: number;
   createdAt: string;
   updatedAt: string;
@@ -68,8 +73,19 @@ export type TenantProfile = {
   occupation: string | null;
   gender: Gender | null;
   profilePhoto: string | null;
-  /** Placeholder until Milestone 5. */
-  subscription: { status: string; expiresAt: string | null };
+  /**
+   * Real since Milestone 5. `status` stayed a string rather than becoming the
+   * service layer's `active` boolean because this field name and shape were
+   * bound in Milestone 2 — `expiresAt` is what carries the new information.
+   *
+   * Not a substitute for `getTenantAccess()`: a tenant profile is optional, so
+   * this record 404s for most tenants while their pass is perfectly valid.
+   */
+  subscription: {
+    status: "ACTIVE" | "INACTIVE";
+    startedAt: string | null;
+    expiresAt: string | null;
+  };
   createdAt: string;
   updatedAt: string;
 };
@@ -188,6 +204,16 @@ export const NATIONAL_ID_RE = /^[A-Za-z0-9]{6,20}$/;
 export const E164_RE = /^\+[1-9]\d{7,14}$/;
 
 /**
+ * A number M-Pesa can actually charge. Mirrors `KE_MOBILE_RE` in
+ * `src/validators/payments.js`.
+ *
+ * Deliberately narrower than `E164_RE`: a profile may hold any international
+ * number, but an STK push only reaches a Kenyan mobile, so a checkout has to
+ * reject what a profile form would accept.
+ */
+export const KE_MOBILE_RE = /^\+254(1|7)\d{8}$/;
+
+/**
  * Mirrors `normalizePhone` in `src/validators/profiles.js`, so a form can show
  * the landlord the number it is actually about to store. Local formats are
  * promoted to E.164; anything else is passed through to fail validation
@@ -241,3 +267,196 @@ export type UnitUpdateInput = {
   vacancy?: boolean;
   amenities?: string[];
 };
+
+// ---------------------------------------------------------------- payments
+
+/** `PaymentStatus` in `prisma/schema.prisma`. */
+export type PaymentStatus = "PENDING" | "QUEUED" | "SUCCESS" | "FAILED" | "CANCELLED";
+
+/** `PaymentPurpose`. The first two are priced per unit; the rest are flat lookups. */
+export type PaymentPurpose =
+  | "LANDLORD_SUBSCRIPTION"
+  | "LANDLORD_UNIT_TOPUP"
+  | "TENANT_DAILY_ACCESS"
+  | "BOOST_LISTING"
+  | "FEATURED_PROPERTY";
+
+/**
+ * A payment stops changing once it reaches one of these, which is what makes it
+ * safe for `use-stk-payment` to stop polling. `PENDING`/`QUEUED` both mean "the
+ * STK prompt is out there and nobody has answered it yet".
+ */
+export const TERMINAL_PAYMENT_STATUSES = ["SUCCESS", "FAILED", "CANCELLED"] as const;
+
+export function isTerminalPayment(status: PaymentStatus): boolean {
+  return (TERMINAL_PAYMENT_STATUSES as readonly string[]).includes(status);
+}
+
+/** What each purpose is called in front of a customer. */
+export const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
+  LANDLORD_SUBSCRIPTION: "Listing subscription",
+  LANDLORD_UNIT_TOPUP: "Extra units",
+  TENANT_DAILY_ACCESS: "Browsing pass",
+  BOOST_LISTING: "Boosted listing",
+  FEATURED_PROPERTY: "Featured property",
+};
+
+/**
+ * `toPaymentDto` in `src/services/payments.js`. `callbackToken` is deliberately
+ * absent from the wire — it is the webhook's bearer secret.
+ */
+export type Payment = {
+  id: string;
+  userId: string;
+  /** Whole KES. Priced server-side; a client-supplied amount is discarded. */
+  amount: number;
+  currency: string;
+  /** Only `MPESA` exists. PayHero is the gateway, M-Pesa is the rail. */
+  provider: "MPESA";
+  purpose: PaymentPurpose;
+  status: PaymentStatus;
+  phoneNumber: string;
+  /** Set only for the per-unit purposes, so a landlord can see what built the figure. */
+  propertyId: string | null;
+  unitCount: number | null;
+  /** The M-Pesa receipt once settled, our own reference before then. */
+  transactionReference: string | null;
+  mpesaReceipt: string | null;
+  /**
+   * Daraja's numeric code, surfaced through PayHero. **Branch on this, not on
+   * `resultDesc`** — 1032 is user-cancelled, 1 is insufficient funds, and the
+   * strings are not stable enough to match on.
+   */
+  resultCode: number | null;
+  resultDesc: string | null;
+  failureReason: string | null;
+  settledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Daraja result codes worth reacting to specifically. `0` is success; the mock
+ * gateway emits `1032` for its failure path. The others are Daraja's standard
+ * codes — handled if they arrive, not relied upon.
+ */
+export const RESULT_CODE = {
+  SUCCESS: 0,
+  /** The prompt was dismissed. Offering a retry is the right move. */
+  CANCELLED_BY_USER: 1032,
+  INSUFFICIENT_FUNDS: 1,
+  /** Nobody touched the handset before the prompt died. */
+  TIMEOUT: 1037,
+  WRONG_PIN: 2001,
+} as const;
+
+/**
+ * The `202` body from every initiate. `reused: true` means an identical payment
+ * was already in flight and **no second prompt was sent** — the copy has to say
+ * "check your phone, we already sent it" rather than imply a fresh push.
+ */
+export type PaymentInitiation = {
+  payment: Payment;
+  reused: boolean;
+};
+
+// ----------------------------------------------------------- subscriptions
+
+/**
+ * `GET /subscriptions/tenant`. A landlord or admin answers `{active: true,
+ * exempt: true, expiresAt: null}` — they are not gated, and rendering "your pass
+ * expired" at them would be showing them a bill they do not owe.
+ */
+export type TenantAccess = {
+  active: boolean;
+  expiresAt: string | null;
+  startedAt: string | null;
+  exempt: boolean;
+  /** Absent for exempt accounts. Read the price from here, never from a literal. */
+  price?: number;
+  hours?: number;
+};
+
+/**
+ * One row of `GET /subscriptions/landlord` — the whole portfolio in one query.
+ *
+ * `unpaidUnits` is `max(0, currentUnits - paidUnits)`, computed server-side. Read
+ * it; do not recompute the pricing rule in the client.
+ */
+export type LandlordSubscriptionRow = {
+  propertyId: string;
+  title: string;
+  status: PropertyStatus;
+  active: boolean;
+  currentUnits: number;
+  paidUnits: number;
+  unpaidUnits: number;
+  unitPrice: number;
+  expiresAt: string | null;
+};
+
+/** What a payment added to a subscription. Display-only history. */
+export type SubscriptionGrant = {
+  kind: "PURCHASE" | "RENEWAL" | "TOPUP";
+  units: number;
+  amount: number;
+  createdAt: string;
+};
+
+/** `GET /subscriptions/landlord?propertyId=` — one property, with recent grants. */
+export type LandlordSubscriptionDetail = {
+  propertyId: string;
+  active: boolean;
+  paidUnits: number;
+  currentUnits: number;
+  unitPrice: number;
+  expiresAt: string | null;
+  startedAt: string | null;
+  grants: SubscriptionGrant[];
+};
+
+/**
+ * `GET /subscriptions/landlord/quote`. Always shown before an STK push: an
+ * unexpected prompt is a cancelled push, and ten successive cancellations block
+ * that phone number for 24 hours account-wide.
+ */
+export type SubscriptionQuote = {
+  amount: number;
+  unitCount: number;
+  unitPrice: number;
+  purpose: "LANDLORD_SUBSCRIPTION" | "LANDLORD_UNIT_TOPUP";
+  currency: string;
+  /** Null for a top-up, which extends the term already running. */
+  termDays: number | null;
+};
+
+/**
+ * One element of `ApiError.details` on `403 SUBSCRIPTION_UNITS_EXCEEDED`, thrown
+ * by `assertCapacity` and `assertPublishable` when a write would expose more
+ * units than were paid for. The backend sends a single-element array, so callers
+ * read `err.details[0]`.
+ *
+ * The server has already done the arithmetic — render the top-up offer from these
+ * numbers rather than deriving them again.
+ */
+export type UnitsExceededDetails = {
+  paidUnits: number;
+  requestedUnits: number;
+  additionalUnits: number;
+  topUpAmount: number;
+};
+
+/** Narrows `ApiError.details[0]` on a units-exceeded refusal. */
+export function unitsExceededFrom(details: unknown): UnitsExceededDetails | null {
+  const first = Array.isArray(details) ? details[0] : null;
+  if (!first || typeof first !== "object") return null;
+  const d = first as Record<string, unknown>;
+  return typeof d.additionalUnits === "number" && typeof d.topUpAmount === "number"
+    ? {
+        paidUnits: Number(d.paidUnits ?? 0),
+        requestedUnits: Number(d.requestedUnits ?? 0),
+        additionalUnits: d.additionalUnits,
+        topUpAmount: d.topUpAmount,
+      }
+    : null;
+}

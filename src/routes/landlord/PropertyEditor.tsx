@@ -1,5 +1,5 @@
 import { ArrowLeft, Eye, EyeOff, Info, MapPin, Save, Send } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -8,6 +8,10 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { ErrorState } from "@/components/app/States";
 import { ImageManager, type ImageManagerValue } from "@/components/landlord/ImageManager";
+import {
+  SubscriptionBlockDialog,
+  useSubscriptionBlock,
+} from "@/components/landlord/SubscriptionBlock";
 import { UnitManager } from "@/components/landlord/UnitManager";
 import { useLandlordGate, VerificationNotice } from "@/components/landlord/VerificationNotice";
 import { Button } from "@/components/ui/button";
@@ -216,6 +220,10 @@ export default function PropertyEditor() {
   const isArchived = property?.status === "ARCHIVED";
   const readOnly = !canWrite || isArchived;
 
+  const { block, capture, clear } = useSubscriptionBlock();
+  /** The publish that was refused for want of a subscription, replayed once paid. */
+  const publishRetry = useRef<(() => Promise<void>) | null>(null);
+
   const imagesChanged = useMemo(() => {
     if (!property) return images.existing.length > 0;
     return (
@@ -302,15 +310,44 @@ export default function PropertyEditor() {
       return;
     }
 
+    const write = async () => {
+      await updateProperty(property.id, { status: next });
+    };
+
     setSaving(true);
     try {
-      await updateProperty(property.id, { status: next });
+      await write();
       toast.success(next === "ACTIVE" ? "Your listing is live." : "Listing hidden from search.");
       loaded.reload();
     } catch (err) {
+      // Publishing is the moment `assertPublishable` runs, so this is where a
+      // landlord meets "pay for this property's units" — with the listing finished
+      // and nothing to do about it from here unless we offer the payment.
+      if (capture(err, property.id)) {
+        publishRetry.current = write;
+        return;
+      }
       toast.error(err instanceof ApiError ? err.message : "Couldn't change the status.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function finishPublish() {
+    const write = publishRetry.current;
+    publishRetry.current = null;
+    clear();
+    if (!write) return;
+
+    try {
+      await write();
+      toast.success("Paid, and your listing is live.");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Paid, but publishing failed. Try again.",
+      );
+    } finally {
+      loaded.reload();
     }
   }
 
@@ -576,6 +613,15 @@ export default function PropertyEditor() {
       {dirty && !readOnly ? (
         <p className="mt-6 text-body-sm text-muted-foreground">You have unsaved changes.</p>
       ) : null}
+
+      <SubscriptionBlockDialog
+        block={block}
+        onClose={() => {
+          publishRetry.current = null;
+          clear();
+        }}
+        onResolved={() => void finishPublish()}
+      />
     </>
   );
 }

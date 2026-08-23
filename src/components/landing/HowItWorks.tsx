@@ -1,5 +1,6 @@
 import { Search, Unlock, MessageCircle, type LucideIcon } from "lucide-react";
 import { SectionHeading } from "./SectionHeading";
+import { TENANT_PASS, formatKes } from "@/lib/content/pricing";
 import { cn } from "@/lib/utils";
 
 type Step = {
@@ -9,20 +10,29 @@ type Step = {
   icon: LucideIcon;
 };
 
+/**
+ * The pass comes first, because that is the actual order.
+ *
+ * These steps used to read Find → Unlock → Connect, opening with "no account needed
+ * to explore". That was never true — every property route is `requireAuth`, so an
+ * anonymous search has nothing to answer it — and since the pass gates the catalogue
+ * itself rather than the phone numbers, the sequence was inverted as well. Promising
+ * a browse that the router then refuses is the worst possible first impression, so
+ * the honest order is the one described here.
+ */
 const STEPS: Step[] = [
   {
     step: "01",
-    title: "Find",
-    description:
-      "Search homes by county and budget, compare photos and details, and shortlist the ones you like — no account needed to explore.",
-    icon: Search,
+    title: "Get a pass",
+    description: `Create an account for free, then buy a day pass — KSh ${formatKes(TENANT_PASS.price)} by M-Pesa opens every listing for 24 hours. Nothing renews, so there is nothing to cancel.`,
+    icon: Unlock,
   },
   {
     step: "02",
-    title: "Unlock",
+    title: "Find",
     description:
-      "Buy a day pass to unlock the landlord's direct contact details. One payment, 24 hours of access, no agent in the middle.",
-    icon: Unlock,
+      "Search homes by town and budget, compare photos, rent and unit details, and shortlist the ones you like — as many searches as you want while your pass runs.",
+    icon: Search,
   },
   {
     step: "03",

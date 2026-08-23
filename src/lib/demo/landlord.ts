@@ -12,6 +12,7 @@
  */
 
 import type { PropertyCard, PropertyStatus } from "@/lib/api/types";
+import { LANDLORD_PRICING, formatKes } from "@/lib/content/pricing";
 import { seededBetween } from "@/lib/demo/seed";
 
 // ------------------------------------------------------------- dashboard stats
@@ -83,117 +84,21 @@ export function demoViewsTrend(properties: PropertyCard[]): DemoViewsPoint[] {
   return points;
 }
 
-// ---------------------------------------------------------------- payments
+// ---------------------------------------------------------- notifications
 
-export type DemoPayment = {
-  id: string;
-  date: string;
-  description: string;
-  method: "M-Pesa" | "Card";
-  reference: string;
-  amount: number;
-  status: "Paid" | "Pending" | "Failed";
-};
-
-/** Dates are relative to today so the table never looks stale. */
+/**
+ * Dates are relative to today so the list never looks stale.
+ *
+ * This used to sit with the demo payments and plans. Those are gone — M4 and M5 are
+ * served by `lib/api/payments.ts` and `lib/api/subscriptions.ts` now, and the tier
+ * data in particular described a model the product never adopted. Notifications are
+ * the last consumer, so the helper moved down here with them.
+ */
 function daysAgoIso(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() - days);
   return date.toISOString();
 }
-
-export const DEMO_PAYMENTS: DemoPayment[] = [
-  {
-    id: "pay-1",
-    date: daysAgoIso(3),
-    description: "Growth plan — monthly",
-    method: "M-Pesa",
-    reference: "SJK7HD92LP",
-    amount: 2500,
-    status: "Paid",
-  },
-  {
-    id: "pay-2",
-    date: daysAgoIso(34),
-    description: "Growth plan — monthly",
-    method: "M-Pesa",
-    reference: "SJH2KD81MQ",
-    amount: 2500,
-    status: "Paid",
-  },
-  {
-    id: "pay-3",
-    date: daysAgoIso(38),
-    description: "Featured listing — Mtwapa 2 Bedroom",
-    method: "Card",
-    reference: "CH_4419KAX",
-    amount: 800,
-    status: "Paid",
-  },
-  {
-    id: "pay-4",
-    date: daysAgoIso(65),
-    description: "Starter plan — monthly",
-    method: "M-Pesa",
-    reference: "SJG9WQ04ZR",
-    amount: 1000,
-    status: "Failed",
-  },
-];
-
-// ----------------------------------------------------------- subscriptions
-
-export type DemoPlan = {
-  id: string;
-  name: string;
-  price: number;
-  cadence: string;
-  propertyLimit: string;
-  features: string[];
-  current?: boolean;
-  recommended?: boolean;
-};
-
-export const DEMO_PLANS: DemoPlan[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: 1000,
-    cadence: "per month",
-    propertyLimit: "Up to 3 properties",
-    features: ["Listed in search", "Up to 6 photos per property", "Email support"],
-  },
-  {
-    id: "growth",
-    name: "Growth",
-    price: 2500,
-    cadence: "per month",
-    propertyLimit: "Up to 15 properties",
-    features: [
-      "Everything in Starter",
-      "Up to 12 photos per property",
-      "Priority placement in search",
-      "Listing performance stats",
-    ],
-    current: true,
-    recommended: true,
-  },
-  {
-    id: "portfolio",
-    name: "Portfolio",
-    price: 6000,
-    cadence: "per month",
-    propertyLimit: "Unlimited properties",
-    features: [
-      "Everything in Growth",
-      "Featured listings included",
-      "Bulk unit management",
-      "Phone support",
-    ],
-  },
-];
-
-// ---------------------------------------------------------- notifications
 
 export type DemoNotification = {
   id: string;
@@ -216,7 +121,13 @@ export const DEMO_NOTIFICATIONS: DemoNotification[] = [
   {
     id: "n-2",
     title: "Payment received",
-    body: "Your Growth plan renewed successfully — KSh 2,500.",
+    // Read "Your Growth plan renewed successfully — KSh 2,500." until M5 shipped.
+    // There are no plans and nothing renews, so this now describes the model that
+    // exists: a 30-day term priced per rentable unit, on one property. The figure is
+    // interpolated so a fake notification can't contradict the real pricing rule.
+    body: `Your ${LANDLORD_PRICING.termDays}-day term for the 2 Bedroom in Mtwapa is active — KSh ${formatKes(
+      LANDLORD_PRICING.example.units * LANDLORD_PRICING.unitPrice,
+    )} for ${LANDLORD_PRICING.example.units} units.`,
     at: daysAgoIso(3),
     unread: true,
     kind: "payment",
