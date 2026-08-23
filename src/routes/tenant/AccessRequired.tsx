@@ -62,6 +62,23 @@ export function AccessRequired() {
   /** "24 hours", or whatever the backend is configured for. */
   const term = hours === null ? "a full day" : hours === 24 ? "24 hours" : `${hours} hours`;
 
+  /**
+   * Closing the checkout is itself a reason to re-check.
+   *
+   * A payment can settle after `use-stk-payment` stops watching, so someone who timed
+   * out, closed the dialog and paused for a few seconds may already hold the pass this
+   * screen is still asking them to buy. `onSettled` covers the case where we watched it
+   * succeed; this covers the case where we didn't, and the dialog's own "Check status"
+   * covers the case where they ask outright.
+   *
+   * Skipped once access is live, so the ordinary success path does not fetch twice —
+   * which matters more than usual against a backend that answers in 1-17s.
+   */
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (!next && !access.active) void access.refresh();
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:py-16">
       <div className="flex flex-col items-center text-center">
@@ -145,7 +162,7 @@ export function AccessRequired() {
 
       <StkCheckoutDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={handleOpenChange}
         title="Buy a browsing pass"
         description={`Unlocks every listing for ${term}.`}
         amount={price ?? 0}
