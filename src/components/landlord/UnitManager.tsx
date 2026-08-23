@@ -1,8 +1,12 @@
 import { DoorOpen, Minus, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AmenityPicker } from "@/components/landlord/AmenityPicker";
+import {
+  SubscriptionBlockDialog,
+  useSubscriptionBlock,
+} from "@/components/landlord/SubscriptionBlock";
 import { EmptyState } from "@/components/app/States";
 import { VacancyBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -156,6 +160,40 @@ export function UnitManager({
   const [editing, setEditing] = useState<{ unit: Unit | null } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Unit | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const { block, capture, clear } = useSubscriptionBlock();
+
+  /**
+   * The write that was refused for want of capacity, held while the landlord pays.
+   *
+   * A ref rather than state because nothing renders from it and it must survive the
+   * dialog that created it being unmounted — that dialog owned the draft, so losing
+   * this would lose the edit.
+   */
+  const deferredWrite = useRef<(() => Promise<void>) | null>(null);
+
+  async function finishDeferredWrite() {
+    const write = deferredWrite.current;
+    deferredWrite.current = null;
+    clear();
+    if (!write) return;
+
+    try {
+      await write();
+      toast.success("Paid, and your units are saved.");
+      onChanged();
+    } catch (err) {
+      // A retry can still fail — the top-up may have covered fewer units than the
+      // change needs if the property was edited elsewhere in between. Say so plainly
+      // rather than implying the payment was wasted; it wasn't, the capacity is theirs.
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "Paid, but saving the change failed. Try saving again.",
+      );
+      onChanged();
+    }
+  }
 
   const totalDoors = units.reduce((sum, unit) => sum + unit.totalUnits, 0);
   const vacantDoors = units.reduce((sum, unit) => sum + unit.availableUnits, 0);
@@ -378,8 +416,27 @@ export function UnitManager({
             setEditing(null);
             onChanged();
           }}
+          onBlocked={(err, write) => {
+            if (!capture(err, propertyId)) return false;
+            // Step aside so the payment isn't a third stacked modal, but keep the
+            // write itself — the landlord already told us what they wanted, and
+            // asking for it again after they've paid would be the second time we
+            // made them do the same work.
+            deferredWrite.current = write;
+            setEditing(null);
+            return true;
+          }}
         />
       ) : null}
+
+      <SubscriptionBlockDialog
+        block={block}
+        onClose={() => {
+          deferredWrite.current = null;
+          clear();
+        }}
+        onResolved={() => void finishDeferredWrite()}
+      />
 
       <Dialog
         open={pendingDelete !== null}
@@ -485,11 +542,18 @@ function UnitDialog({
   unit,
   onClose,
   onSaved,
+  onBlocked,
 }: {
   propertyId: string;
   unit: Unit | null;
   onClose: () => void;
   onSaved: () => void;
+  /**
+   * Offered a failed write and the thunk that produced it. Returns true when the
+   * parent has taken it over — a subscription refusal it can offer a payment for —
+   * in which case this dialog stops handling the error and closes.
+   */
+  onBlocked: (err: unknown, write: () => Promise<void>) => boolean;
 }) {
   const [draft, setDraft] = useState<UnitDraft>(unit ? toDraft(unit) : EMPTY_DRAFT);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -518,18 +582,26 @@ function UnitDialog({
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    setSaving(true);
-    try {
-      const input = toInput(draft);
+    const input = toInput(draft);
+    /** Isolated so it can be replayed verbatim after a capacity top-up. */
+    const write = async () => {
       if (unit) {
         await updateUnit(propertyId, unit.id, input);
-        toast.success(`"${input.unitType}" updated.`);
       } else {
         await createUnit(propertyId, input);
-        toast.success(`"${input.unitType}" added.`);
       }
+    };
+
+    setSaving(true);
+    try {
+      await write();
+      toast.success(`"${input.unitType}" ${unit ? "updated" : "added"}.`);
       onSaved();
     } catch (err) {
+      // A capacity refusal is not this dialog's problem to explain — the parent
+      // offers the top-up and replays `write` once it settles.
+      if (onBlocked(err, write)) return;
+
       if (err instanceof ApiError) {
         toast.error(err.message);
         // Field-level detail when the server disagrees with the local check.

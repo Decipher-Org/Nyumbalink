@@ -2,15 +2,23 @@
  * The registry of everything in this app that is **not** backed by a real
  * endpoint.
  *
- * The backend is complete through Milestone 3 (auth, profiles, properties,
- * units). The designs cover a good deal more, so those surfaces are built but
- * fed from `lib/demo/` and labelled with `<DemoBadge>`. This file is the index:
- * one entry per fake feature, naming the milestone that replaces it.
+ * The backend is complete through Milestone 5 (auth, profiles, properties, units,
+ * payments, subscriptions). The designs cover a good deal more, so those surfaces are
+ * built but fed from `lib/demo/` and labelled with `<DemoBadge>`. This file is the
+ * index: one entry per fake feature, naming the milestone that replaces it.
  *
  * The rule this enforces: **nothing fake is unlabelled.** A screen that reads
  * from `lib/demo/` must render the badge, and a value that isn't in `lib/demo/`
  * must have come from the API. That makes replacing a mock a one-file change,
  * and makes an audit a `grep` rather than a reading exercise.
+ *
+ * ## Retiring an entry
+ *
+ * Delete it from the union **first**, then let `tsc` fail on every `<DemoBadge>` and
+ * `<StatCard demo=…>` that still names it. That is what this file is for: the
+ * compiler enumerates the surfaces to revisit, so a badge cannot be left behind on a
+ * screen that has since become real. `subscriptions` (M5) and `payments` (M4) were
+ * removed this way once the backend started serving them.
  */
 
 export type DemoFeatureId =
@@ -18,8 +26,6 @@ export type DemoFeatureId =
   | "reviews"
   | "views"
   | "messages"
-  | "subscriptions"
-  | "payments"
   | "notifications"
   | "amenityFilter"
   | "sorting"
@@ -54,16 +60,6 @@ export const DEMO_FEATURES: Record<DemoFeatureId, DemoFeature> = {
     label: "Messages",
     milestone: "not on the roadmap",
     note: "Sample conversations. In-app chat is not built — use the landlord's phone number for now.",
-  },
-  subscriptions: {
-    label: "Subscriptions",
-    milestone: "Milestone 5",
-    note: "Plans are illustrative. Nothing is charged and no listing is gated by a plan yet.",
-  },
-  payments: {
-    label: "Payments",
-    milestone: "Milestone 4",
-    note: "Sample transactions. M-Pesa and card payments are not connected.",
   },
   notifications: {
     label: "Notifications",

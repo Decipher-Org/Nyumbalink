@@ -161,15 +161,3 @@ export const DEMO_CHATS: DemoChat[] = [
     unread: false,
   },
 ];
-
-// --------------------------------------------------------- the browsing "gate"
-
-/**
- * Copy for the subscription banner. Deliberately phrased as something that will
- * happen rather than something in force, because nothing is charged and every
- * listing is fully browsable today.
- */
-export const DEMO_BROWSE_GATE = {
-  price: "KSh 20 / day",
-  note: "Unlimited browsing is planned as a daily pass. Nothing is charged yet and every listing here is already open to you.",
-} as const;

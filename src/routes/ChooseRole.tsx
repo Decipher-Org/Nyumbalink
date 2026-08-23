@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
+import { LANDLORD_PRICING, TENANT_PASS, formatKes } from "@/lib/content/pricing";
 import { parseRoleParam, type SignupRole } from "@/lib/roles";
 import { loginPath, safeNextPath } from "@/lib/search-params";
 import { cn } from "@/lib/utils";
@@ -15,19 +16,36 @@ type RoleOption = {
   icon: LucideIcon;
 };
 
+/**
+ * Both cards quote a price, so both interpolate from `lib/content/pricing.ts`.
+ *
+ * The tenant bullet read "KES 20 day pass" and the landlord one "Free to start" —
+ * a price that was never charged and a claim that stopped being true when M5 shipped
+ * (publishing a property costs its unit count). This is the screen where someone
+ * decides which account to open, so the numbers on it have to be the ones they will
+ * actually meet.
+ */
 const ROLE_OPTIONS: RoleOption[] = [
   {
     role: "TENANT",
     title: "I'm looking for a home",
     description: "Search verified listings and contact landlords directly.",
-    points: ["Browse homes across 40+ towns", "KES 20 day pass", "No agent fees"],
+    points: [
+      "Browse homes across 40+ towns",
+      `KSh ${formatKes(TENANT_PASS.price)} day pass`,
+      "No agent fees",
+    ],
     icon: Search,
   },
   {
     role: "LANDLORD",
     title: "I have property to rent out",
     description: "List your properties and reach tenants without a middleman.",
-    points: ["List properties and units", "Track vacancies", "Free to start"],
+    points: [
+      "List properties and units",
+      "Track vacancies",
+      `KSh ${formatKes(LANDLORD_PRICING.unitPrice)} per unit, ${LANDLORD_PRICING.termDays} days`,
+    ],
     icon: Building2,
   },
 ];
