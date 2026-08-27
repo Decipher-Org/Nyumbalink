@@ -123,6 +123,9 @@ export type PropertyCard = {
   /** Cheapest unit rent in KES, or null when no units exist yet. */
   unitsFrom: number | null;
   createdAt: string;
+  /** Distance from search coordinates in kilometers (only present when
+   * geolocation search is performed). */
+  distanceKm?: number;
 };
 
 /** The public landlord block embedded in a property detail. Never `nationalId`. */

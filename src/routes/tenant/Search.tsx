@@ -1,5 +1,5 @@
 import { Map, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { DemoBadge } from "@/components/app/DemoBadge";
@@ -19,8 +19,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { listProperties } from "@/lib/api/properties";
-import type { PropertyCard } from "@/lib/api/types";
+import { searchProperties, type SearchParams } from "@/lib/api/properties";
 import { COUNTY, KILIFI_TOWNS } from "@/lib/content/kilifi";
 import { useAsync } from "@/lib/hooks/use-async";
 import { formatKes } from "@/lib/format";
@@ -38,16 +37,11 @@ import { formatKes } from "@/lib/format";
  *
  * ## Which filters are real
  *
- * `town`, `estate`, `minPrice`, `maxPrice`, `bedrooms` and `page` are query
- * params `GET /properties` genuinely supports, so those narrow the whole
- * catalogue on the server.
- *
- * `q` and sorting are **not**. There is no title-search param and the list order
- * is hardcoded `createdAt desc`, so both are applied in the browser to the page
- * already loaded. That distinction is stated on screen rather than hidden,
- * because a text search that silently only covers 20 of 200 listings is worse
- * than one that admits its scope. Amenity filtering and the map are Milestone 6
- * and are marked and inert.
+ * All filters (`q`, `county`, `town`, `estate`, `minPrice`, `maxPrice`, `bedrooms`,
+ * `availableOnly`, `amenities`, `lat`, `lng`, `radiusKm`, `sort`, `page`, `limit`)
+ * are genuine query parameters supported by `GET /api/v1/search`, so they narrow
+ * the whole catalogue on the server. The search endpoint also provides
+ * geolocation distance sorting and computes distanceKm for each result.
  *
  * `county` is pinned to Kilifi on every request — the launch is scoped to one
  * county, so it is never a user choice.
@@ -57,26 +51,50 @@ const PAGE_SIZE = 12;
 
 const BEDROOM_OPTIONS = ["1", "2", "3", "4", "5"] as const;
 
-/** Milestone 6. Rendered so the shape is reviewable; every box is disabled. */
-const DEMO_AMENITIES = ["WiFi", "Parking", "Borehole", "Security", "Balcony", "Furnished"];
-
 type Filters = {
+  q: string;
   town: string;
   estate: string;
   minPrice: string;
   maxPrice: string;
   bedrooms: string;
+  availableOnly: string;
+  lat: string;
+  lng: string;
+  radiusKm: string;
+  sort: string;
+  amenities: string; // comma-separated list
 };
 
-const EMPTY: Filters = { town: "", estate: "", minPrice: "", maxPrice: "", bedrooms: "" };
+const EMPTY: Filters = {
+  q: "",
+  town: "",
+  estate: "",
+  minPrice: "",
+  maxPrice: "",
+  bedrooms: "",
+  availableOnly: "",
+  lat: "",
+  lng: "",
+  radiusKm: "",
+  sort: "newest",
+  amenities: "",
+};
 
 function readFilters(params: URLSearchParams): Filters {
   return {
+    q: params.get("q") ?? "",
     town: params.get("town") ?? "",
     estate: params.get("estate") ?? "",
     minPrice: params.get("minPrice") ?? "",
     maxPrice: params.get("maxPrice") ?? "",
     bedrooms: params.get("bedrooms") ?? "",
+    availableOnly: params.get("availableOnly") ?? "",
+    lat: params.get("lat") ?? "",
+    lng: params.get("lng") ?? "",
+    radiusKm: params.get("radiusKm") ?? "",
+    sort: params.get("sort") ?? "newest",
+    amenities: params.get("amenities") ?? "",
   };
 }
 
@@ -90,24 +108,32 @@ export default function TenantSearch() {
   const [queryDraft, setQueryDraft] = useState(q);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draft, setDraft] = useState<Filters>(filters);
-  const [sort, setSort] = useState("newest");
+
+  // Convert draft Filters and queryDraft to SearchParams
+  function toSearchParams(): SearchParams {
+    return {
+      q: queryDraft || undefined,
+      county: COUNTY,
+      town: draft.town || undefined,
+      estate: draft.estate || undefined,
+      bedrooms: draft.bedrooms ? (isNaN(Number(draft.bedrooms)) ? draft.bedrooms : Number(draft.bedrooms)) : undefined,
+      minPrice: draft.minPrice ? Number(draft.minPrice) : undefined,
+      maxPrice: draft.maxPrice ? Number(draft.maxPrice) : undefined,
+      availableOnly: draft.availableOnly === "true",
+      lat: draft.lat ? Number(draft.lat) : undefined,
+      lng: draft.lng ? Number(draft.lng) : undefined,
+      radiusKm: draft.radiusKm ? Number(draft.radiusKm) : undefined,
+      sort: draft.sort as "newest" | "price_asc" | "price_desc" | "distance",
+      amenities: draft.amenities ? draft.amenities.split(",").map(a => a.trim()).filter(Boolean) : undefined,
+      page: Number(page),
+      limit: PAGE_SIZE,
+    };
+  }
 
   const results = useAsync(
     (signal) =>
-      listProperties(
-        {
-          county: COUNTY,
-          town: filters.town || undefined,
-          estate: filters.estate || undefined,
-          minPrice: filters.minPrice ? Number(filters.minPrice) : undefined,
-          maxPrice: filters.maxPrice ? Number(filters.maxPrice) : undefined,
-          bedrooms: filters.bedrooms || undefined,
-          page,
-          limit: PAGE_SIZE,
-        },
-        signal,
-      ),
-    [filters.town, filters.estate, filters.minPrice, filters.maxPrice, filters.bedrooms, page],
+      searchProperties(toSearchParams(), signal),
+    [draft, queryDraft, page],
   );
 
   /** Writes a filter set to the URL, always resetting to page 1. */
@@ -116,7 +142,9 @@ export default function TenantSearch() {
     const text = options.q ?? q;
     if (text) search.set("q", text);
     for (const [key, value] of Object.entries(next)) {
-      if (value) search.set(key, value);
+      if (value !== "" && value !== null) {
+        search.set(key, value);
+      }
     }
     setParams(search);
   }
@@ -131,19 +159,8 @@ export default function TenantSearch() {
   const items = results.data?.items ?? [];
   const pagination = results.data?.pagination;
 
-  // Client-side, over the loaded page only — see the header comment.
-  const visible = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    const matched =
-      needle === ""
-        ? items
-        : items.filter((item) =>
-            [item.title, item.town, item.estate ?? ""].some((field) =>
-              field.toLowerCase().includes(needle),
-            ),
-          );
-    return sortItems(matched, sort);
-  }, [items, q, sort]);
+  // Filtering and sorting are handled by the backend.
+  const visible = items;
 
   const activeChips = describeFilters(filters);
 
@@ -171,8 +188,8 @@ export default function TenantSearch() {
           <Input
             value={queryDraft}
             onChange={(event) => setQueryDraft(event.target.value)}
-            placeholder="Search this page"
-            aria-label="Search loaded results"
+            placeholder="Search listings"
+            aria-label="Search listings"
             className="pl-9"
           />
         </form>
@@ -204,12 +221,149 @@ export default function TenantSearch() {
             </SheetHeader>
 
             <div className="flex-1 space-y-5 overflow-y-auto px-4">
+              {/* Availability */}
+              <fieldset className="space-y-2">
+                <legend className="text-body-sm font-medium text-foreground">
+                  Availability
+                </legend>
+                <label className="flex items-center gap-2 text-body-sm text-muted-foreground">
+                  <Checkbox
+                    checked={draft.availableOnly === "true"}
+                    onCheckedChange={(checked) => {
+                      setDraft((prev) => ({
+                        ...prev,
+                        availableOnly: checked === true ? "true" : "",
+                      }));
+                    }}
+                  />
+                  Only show available units
+                </label>
+              </fieldset>
+
+              {/* Amenities */}
+              <fieldset className="space-y-2">
+                <legend className="text-body-sm font-medium text-foreground">
+                  Amenities
+                </legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {["wifi", "parking", "water", "petFriendly", "furnished"].map(
+                    (amenity) => {
+                      const checked = draft.amenities
+                        ? draft.amenities
+                            .split(",")
+                            .map((a) => a.trim())
+                            .includes(amenity)
+                        : false;
+                      return (
+                        <label
+                          key={amenity}
+                          className="flex items-center gap-2 text-body-sm text-muted-foreground"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(checked) => {
+                              setDraft((prev) => {
+                                const amenitiesList = prev.amenities
+                                  ? prev.amenities
+                                      .split(",")
+                                      .map((a) => a.trim())
+                                      .filter(Boolean)
+                                  : [];
+                                const updated =
+                                  checked === true
+                                    ? [...amenitiesList, amenity]
+                                    : amenitiesList.filter((a) => a !== amenity);
+                                return { ...prev, amenities: updated.join(",") };
+                              });
+                            }}
+                          />
+                          {amenity.charAt(0).toUpperCase() + amenity.slice(1)}
+                        </label>
+                      );
+                    }
+                  )}
+                </div>
+              </fieldset>
+
+              {/* Geolocation */}
+              <fieldset className="space-y-2">
+                <legend className="text-body-sm font-medium text-foreground">
+                  Geolocation
+                </legend>
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+                          navigator.geolocation.getCurrentPosition(resolve, reject);
+                        });
+                        const { latitude, longitude } = pos.coords;
+                        setDraft((prev) => ({
+                          ...prev,
+                          lat: latitude.toString(),
+                          lng: longitude.toString(),
+                          radiusKm: "10", // default radius
+                        }));
+                      } catch (err) {
+                        console.error("Geolocation error:", err);
+                        alert("Could not get your location. Please enable geolocation permissions.");
+                      }
+                    }}
+                  >
+                    Use my location
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="filter-lat">Latitude</Label>
+                  <Input
+                    id="filter-lat"
+                    value={draft.lat}
+                    placeholder="e.g. -1.234"
+                    onChange={(e) =>
+                      setDraft((prev) => ({ ...prev, lat: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="filter-lng">Longitude</Label>
+                  <Input
+                    id="filter-lng"
+                    value={draft.lng}
+                    placeholder="e.g. 36.567"
+                    onChange={(e) =>
+                      setDraft((prev) => ({ ...prev, lng: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="filter-radius">Radius (km)</Label>
+                  <Input
+                    id="filter-radius"
+                    value={draft.radiusKm}
+                    placeholder="e.g. 5"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    onChange={(e) =>
+                      setDraft((prev) => ({ ...prev, radiusKm: e.target.value }))
+                    }
+                  />
+                </div>
+              </fieldset>
+
+              {/* Existing filters: Town, Estate, Price, Bedrooms */}
+              <Separator />
+
               <div className="space-y-1.5">
                 <Label htmlFor="filter-town">Town</Label>
                 <Select
                   value={draft.town || "any"}
                   onValueChange={(value) =>
-                    setDraft((prev) => ({ ...prev, town: value === "any" ? "" : value }))
+                    setDraft((prev) => ({
+                      ...prev,
+                      town: value === "any" ? "" : value,
+                    }))
                   }
                 >
                   <SelectTrigger id="filter-town" className="w-full">
@@ -249,7 +403,10 @@ export default function TenantSearch() {
                     placeholder="Min"
                     aria-label="Minimum rent"
                     onChange={(event) =>
-                      setDraft((prev) => ({ ...prev, minPrice: digitsOnly(event.target.value) }))
+                      setDraft((prev) => ({
+                        ...prev,
+                        minPrice: digitsOnly(event.target.value),
+                      }))
                     }
                   />
                   <span aria-hidden="true" className="text-muted-foreground">
@@ -261,7 +418,10 @@ export default function TenantSearch() {
                     placeholder="Max"
                     aria-label="Maximum rent"
                     onChange={(event) =>
-                      setDraft((prev) => ({ ...prev, maxPrice: digitsOnly(event.target.value) }))
+                      setDraft((prev) => ({
+                        ...prev,
+                        maxPrice: digitsOnly(event.target.value),
+                      }))
                     }
                   />
                 </div>
@@ -280,7 +440,10 @@ export default function TenantSearch() {
                         variant={active ? "default" : "outline"}
                         aria-pressed={active}
                         onClick={() =>
-                          setDraft((prev) => ({ ...prev, bedrooms: active ? "" : count }))
+                          setDraft((prev) => ({
+                            ...prev,
+                            bedrooms: active ? "" : count,
+                          }))
                         }
                       >
                         {count}
@@ -291,29 +454,6 @@ export default function TenantSearch() {
                 </div>
                 <p className="text-caption text-muted-foreground">
                   Matched against the unit type, so “2” finds “2 Bedroom”.
-                </p>
-              </fieldset>
-
-              <Separator />
-
-              <fieldset className="space-y-2" disabled>
-                <legend className="flex items-center gap-2 text-body-sm font-medium text-muted-foreground">
-                  Amenities
-                  <DemoBadge feature="amenityFilter" />
-                </legend>
-                <div className="grid grid-cols-2 gap-2">
-                  {DEMO_AMENITIES.map((amenity) => (
-                    <label
-                      key={amenity}
-                      className="flex items-center gap-2 text-body-sm text-muted-foreground"
-                    >
-                      <Checkbox disabled />
-                      {amenity}
-                    </label>
-                  ))}
-                </div>
-                <p className="text-caption text-muted-foreground">
-                  Amenities show on each listing but can’t be filtered on yet.
                 </p>
               </fieldset>
             </div>
@@ -370,12 +510,16 @@ export default function TenantSearch() {
             ? "Loading…"
             : pagination
               ? `${pagination.total} ${pagination.total === 1 ? "listing" : "listings"}`
-              : `${visible.length} shown`}
-          {q ? ` · filtered to “${q}” on this page` : ""}
+              : `${items.length} shown`}
         </p>
 
         <div className="flex items-center gap-2">
-          <Select value={sort} onValueChange={setSort}>
+          <Select
+            value={draft.sort}
+            onValueChange={(value) =>
+              setDraft((prev) => ({ ...prev, sort: value }))
+            }
+          >
             <SelectTrigger className="h-9 w-[9.5rem]" aria-label="Sort results">
               <SelectValue />
             </SelectTrigger>
@@ -383,6 +527,7 @@ export default function TenantSearch() {
               <SelectItem value="newest">Newest</SelectItem>
               <SelectItem value="price-asc">Price: low to high</SelectItem>
               <SelectItem value="price-desc">Price: high to low</SelectItem>
+              <SelectItem value="distance">Distance</SelectItem>
             </SelectContent>
           </Select>
           <DemoBadge feature="sorting" />
@@ -402,7 +547,7 @@ export default function TenantSearch() {
         </div>
       ) : results.error ? (
         <ErrorState error={results.error} onRetry={results.reload} />
-      ) : visible.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyState
           icon={SearchIcon}
           title={q || activeChips.length > 0 ? "Nothing matches that" : "No listings yet"}
@@ -467,23 +612,6 @@ function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
 
-/**
- * Sorting runs over the loaded page only (`DEMO_FEATURES.sorting`). "Newest" is
- * the server's own order, so it is a no-op rather than a re-sort — the card
- * payload has `createdAt`, but re-sorting by it would only reorder the same 12
- * rows and imply the control reached further than it does.
- */
-function sortItems(items: PropertyCard[], sort: string): PropertyCard[] {
-  if (sort === "newest") return items;
-  const copy = [...items];
-  copy.sort((a, b) => {
-    const left = a.unitsFrom ?? Number.POSITIVE_INFINITY;
-    const right = b.unitsFrom ?? Number.POSITIVE_INFINITY;
-    return sort === "price-asc" ? left - right : right - left;
-  });
-  return copy;
-}
-
 type Chip = { key: string; label: string; clear: Partial<Filters> };
 
 function describeFilters(filters: Filters): Chip[] {
@@ -509,6 +637,34 @@ function describeFilters(filters: Filters): Chip[] {
       key: "price",
       label: min && max ? `${min} – ${max}` : min ? `From ${min}` : `Up to ${max}`,
       clear: { minPrice: "", maxPrice: "" },
+    });
+  }
+  if (filters.availableOnly === "true") {
+    chips.push({
+      key: "availableOnly",
+      label: "Available units",
+      clear: { availableOnly: "" },
+    });
+  }
+  if (filters.amenities) {
+    const amenitiesList = filters.amenities
+      .split(",")
+      .map((a) => a.trim())
+      .filter(Boolean);
+    if (amenitiesList.length > 0) {
+      chips.push({
+        key: "amenities",
+        label: `Amenities: ${amenitiesList.join(", ")}`,
+        clear: { amenities: "" },
+      });
+    }
+  }
+  if (filters.lat && filters.lng) {
+    const radius = filters.radiusKm ? ` (radius ${filters.radiusKm}km)` : "";
+    chips.push({
+      key: "geolocation",
+      label: `Near ${filters.lat}, ${filters.lng}${radius}`,
+      clear: { lat: "", lng: "", radiusKm: "" },
     });
   }
 
