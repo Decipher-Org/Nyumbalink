@@ -34,6 +34,35 @@ export type PropertyListParams = {
   limit?: number;
 };
 
+/** Parameters for GET /api/v1/search (Milestone 6). */
+export type SearchParams = {
+  /** Keyword search across title, description, estate, town, county. */
+  q?: string;
+  county?: string;
+  town?: string;
+  estate?: string;
+  /** Matched as text against `unitType`, so `2` finds "2 Bedroom". */
+  bedrooms?: number | string;
+  minPrice?: number;
+  maxPrice?: number;
+  /** Only show units that are available (availableUnits > 0). */
+  availableOnly?: boolean;
+  /** Amenities to filter by. Can be provided as boolean flags or as a
+   * comma-separated list (e.g. "wifi,parking"). */
+  amenities?: string[]; // e.g. ["wifi", "parking"]
+  /** Latitude for geolocation search. */
+  lat?: number;
+  /** Longitude for geolocation search. */
+  lng?: number;
+  /** Radius in kilometers for geolocation search (requires lat and lng).
+   * Defaults to 10 if lat/lng are provided. */
+  radiusKm?: number;
+  /** Sort order: newest, price_asc, price_desc, distance. */
+  sort?: "newest" | "price_asc" | "price_desc" | "distance";
+  page?: number;
+  limit?: number;
+};
+
 export async function listProperties(
   params: PropertyListParams = {},
   signal?: AbortSignal,
@@ -138,4 +167,24 @@ export async function listUnitsForProperties(
     }),
   );
   return Object.fromEntries(results);
+}
+
+/**
+ * Search properties with filters, geolocation, sorting, pagination, and caching.
+ * GET /api/v1/search
+ */
+export async function searchProperties(
+  params: SearchParams = {},
+  signal?: AbortSignal,
+): Promise<{ items: PropertyCard[]; pagination?: ApiPagination }> {
+  const { amenities, ...rest } = params;
+  const { data, pagination } = await apiFetchPaged<PropertyCard[]>("/search", {
+    query: {
+      ...rest,
+      // The endpoint reads amenities as a comma-separated list.
+      amenities: amenities?.length ? amenities.join(",") : undefined,
+    },
+    signal,
+  });
+  return { items: data ?? [], pagination };
 }
