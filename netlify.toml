@@ -12,13 +12,13 @@
   NODE_VERSION = "22"
   # Vite embeds this public API origin into the production JavaScript bundle.
   VITE_API_URL = "https://api.nyumbalink.co.ke"
-  VITE_FIREBASE_API_KEY="AIzaSyAavNmxsMRx6JL5QpNGvosa7L_h1OICQfg"
-  VITE_FIREBASE_AUTH_DOMAIN="nyumbalink-f853f.firebaseapp.com"
-  VITE_FIREBASE_PROJECT_ID="nyumbalink-f853f"
-  VITE_FIREBASE_STORAGE_BUCKET="nyumbalink-f853f.firebasestorage.app"
-  VITE_FIREBASE_MESSAGING_SENDER_ID="731096441081"
-  VITE_FIREBASE_APP_ID="1:731096441081:web:9fb5728d34d36206f60228"
-  VITE_FIREBASE_VAPID_KEY="BPF6938Kjrh1y0GpZZoz8WuiEFmnmDqDNiNG9AqqyB3Z1GPrsNy7SpCsWKLvmNCHJ5EFFrbbtiXyzBvht4_YaRk"
+  VITE_FIREBASE_API_KEY = "AIzaSyAavNmxsMRx6JL5QpNGvosa7L_h1OICQfg"
+  VITE_FIREBASE_AUTH_DOMAIN = "nyumbalink-f853f.firebaseapp.com"
+  VITE_FIREBASE_PROJECT_ID = "nyumbalink-f853f"
+  VITE_FIREBASE_STORAGE_BUCKET = "nyumbalink-f853f.firebasestorage.app"
+  VITE_FIREBASE_MESSAGING_SENDER_ID = "731096441081"
+  VITE_FIREBASE_APP_ID = "1:731096441081:web:9fb5728d34d36206f60228"
+  VITE_FIREBASE_VAPID_KEY = "BPF6938Kjrh1y0GpZZoz8WuiEFmnmDqDNiNG9AqqyB3Z1GPrsNy7SpCsWKLvmNCHJ5EFFrbbtiXyzBvht4_YaRk"
 
 # SPA fallback. This is a client-side-routed React app (BrowserRouter), so every
 # path that isn't a real file must serve index.html and let the router resolve
