@@ -104,6 +104,12 @@ export function ListingCard({
           </span>
         </p>
 
+        {typeof property.distanceKm === "number" ? (
+          <p className="mt-1 text-caption text-muted-foreground">
+            {property.distanceKm.toFixed(1)} km away
+          </p>
+        ) : null}
+
         <div className="mt-3 flex items-end justify-between gap-2">
           {property.unitsFrom === null ? (
             // A live listing with no unit types yet has no price to show. Saying

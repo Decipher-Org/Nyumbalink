@@ -1,5 +1,5 @@
 import { Map, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { DemoBadge } from "@/components/app/DemoBadge";
@@ -109,22 +109,26 @@ export default function TenantSearch() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draft, setDraft] = useState<Filters>(filters);
 
-  // Convert draft Filters and queryDraft to SearchParams
+  // Browser navigation can change the committed URL without touching the input.
+  useEffect(() => setQueryDraft(q), [q]);
+
+  // Convert committed URL filters to SearchParams. `draft` stays local to the
+  // sheet until the tenant explicitly applies it.
   function toSearchParams(): SearchParams {
     return {
-      q: queryDraft || undefined,
+      q: q || undefined,
       county: COUNTY,
-      town: draft.town || undefined,
-      estate: draft.estate || undefined,
-      bedrooms: draft.bedrooms ? (isNaN(Number(draft.bedrooms)) ? draft.bedrooms : Number(draft.bedrooms)) : undefined,
-      minPrice: draft.minPrice ? Number(draft.minPrice) : undefined,
-      maxPrice: draft.maxPrice ? Number(draft.maxPrice) : undefined,
-      availableOnly: draft.availableOnly === "true",
-      lat: draft.lat ? Number(draft.lat) : undefined,
-      lng: draft.lng ? Number(draft.lng) : undefined,
-      radiusKm: draft.radiusKm ? Number(draft.radiusKm) : undefined,
-      sort: draft.sort as "newest" | "price_asc" | "price_desc" | "distance",
-      amenities: draft.amenities ? draft.amenities.split(",").map(a => a.trim()).filter(Boolean) : undefined,
+      town: filters.town || undefined,
+      estate: filters.estate || undefined,
+      bedrooms: filters.bedrooms ? (isNaN(Number(filters.bedrooms)) ? filters.bedrooms : Number(filters.bedrooms)) : undefined,
+      minPrice: filters.minPrice ? Number(filters.minPrice) : undefined,
+      maxPrice: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+      availableOnly: filters.availableOnly === "true" ? true : undefined,
+      lat: filters.lat ? Number(filters.lat) : undefined,
+      lng: filters.lng ? Number(filters.lng) : undefined,
+      radiusKm: filters.radiusKm ? Number(filters.radiusKm) : undefined,
+      sort: filters.sort as "newest" | "price_asc" | "price_desc" | "distance",
+      amenities: filters.amenities ? filters.amenities.split(",").map(a => a.trim()).filter(Boolean) : undefined,
       page: Number(page),
       limit: PAGE_SIZE,
     };
@@ -133,7 +137,7 @@ export default function TenantSearch() {
   const results = useAsync(
     (signal) =>
       searchProperties(toSearchParams(), signal),
-    [draft, queryDraft, page],
+    [filters, q, page],
   );
 
   /** Writes a filter set to the URL, always resetting to page 1. */
@@ -515,18 +519,16 @@ export default function TenantSearch() {
 
         <div className="flex items-center gap-2">
           <Select
-            value={draft.sort}
-            onValueChange={(value) =>
-              setDraft((prev) => ({ ...prev, sort: value }))
-            }
+            value={filters.sort}
+            onValueChange={(value) => commit({ ...filters, sort: value })}
           >
             <SelectTrigger className="h-9 w-[9.5rem]" aria-label="Sort results">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="newest">Newest</SelectItem>
-              <SelectItem value="price-asc">Price: low to high</SelectItem>
-              <SelectItem value="price-desc">Price: high to low</SelectItem>
+              <SelectItem value="price_asc">Price: low to high</SelectItem>
+              <SelectItem value="price_desc">Price: high to low</SelectItem>
               <SelectItem value="distance">Distance</SelectItem>
             </SelectContent>
           </Select>
