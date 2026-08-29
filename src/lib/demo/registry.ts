@@ -26,7 +26,6 @@ export type DemoFeatureId =
   | "reviews"
   | "views"
   | "messages"
-  | "notifications"
   | "amenityFilter"
   | "sorting"
   | "map"
@@ -60,11 +59,6 @@ export const DEMO_FEATURES: Record<DemoFeatureId, DemoFeature> = {
     label: "Messages",
     milestone: "not on the roadmap",
     note: "Sample conversations. In-app chat is not built — use the landlord's phone number for now.",
-  },
-  notifications: {
-    label: "Notifications",
-    milestone: "Milestone 7",
-    note: "Sample alerts. No notifications are generated or delivered yet.",
   },
   amenityFilter: {
     label: "Amenity filter",

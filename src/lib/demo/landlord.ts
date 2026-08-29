@@ -12,7 +12,6 @@
  */
 
 import type { PropertyCard, PropertyStatus } from "@/lib/api/types";
-import { LANDLORD_PRICING, formatKes } from "@/lib/content/pricing";
 import { seededBetween } from "@/lib/demo/seed";
 
 // ------------------------------------------------------------- dashboard stats
@@ -83,72 +82,6 @@ export function demoViewsTrend(properties: PropertyCard[]): DemoViewsPoint[] {
 
   return points;
 }
-
-// ---------------------------------------------------------- notifications
-
-/**
- * Dates are relative to today so the list never looks stale.
- *
- * This used to sit with the demo payments and plans. Those are gone — M4 and M5 are
- * served by `lib/api/payments.ts` and `lib/api/subscriptions.ts` now, and the tier
- * data in particular described a model the product never adopted. Notifications are
- * the last consumer, so the helper moved down here with them.
- */
-function daysAgoIso(days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date.toISOString();
-}
-
-export type DemoNotification = {
-  id: string;
-  title: string;
-  body: string;
-  at: string;
-  unread: boolean;
-  kind: "enquiry" | "payment" | "listing" | "system";
-};
-
-export const DEMO_NOTIFICATIONS: DemoNotification[] = [
-  {
-    id: "n-1",
-    title: "New enquiry",
-    body: "Someone asked about your 2 Bedroom in Mtwapa.",
-    at: daysAgoIso(0),
-    unread: true,
-    kind: "enquiry",
-  },
-  {
-    id: "n-2",
-    title: "Payment received",
-    // Read "Your Growth plan renewed successfully — KSh 2,500." until M5 shipped.
-    // There are no plans and nothing renews, so this now describes the model that
-    // exists: a 30-day term priced per rentable unit, on one property. The figure is
-    // interpolated so a fake notification can't contradict the real pricing rule.
-    body: `Your ${LANDLORD_PRICING.termDays}-day term for the 2 Bedroom in Mtwapa is active — KSh ${formatKes(
-      LANDLORD_PRICING.example.units * LANDLORD_PRICING.unitPrice,
-    )} for ${LANDLORD_PRICING.example.units} units.`,
-    at: daysAgoIso(3),
-    unread: true,
-    kind: "payment",
-  },
-  {
-    id: "n-3",
-    title: "Listing approved",
-    body: "Kilifi Town Bedsitters is now visible in search.",
-    at: daysAgoIso(6),
-    unread: false,
-    kind: "listing",
-  },
-  {
-    id: "n-4",
-    title: "Add photos to finish your draft",
-    body: "Drafts without photos get far fewer enquiries once published.",
-    at: daysAgoIso(11),
-    unread: false,
-    kind: "system",
-  },
-];
 
 // ------------------------------------------------------ status chart palette
 
