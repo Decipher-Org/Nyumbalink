@@ -5,6 +5,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Logo, LogoMark } from "@/components/brand/Logo";
 import type { NavItem } from "@/components/app/nav-config";
 import { LANDLORD_NAV, TENANT_NAV } from "@/components/app/nav-config";
+import { NotificationBell } from "@/components/app/NotificationBell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -192,6 +193,7 @@ export function AppShell({ role }: { role: "LANDLORD" | "TENANT" }) {
             </Link>
 
             <div className="ml-auto flex items-center gap-3">
+              <NotificationBell role={role} />
               <div className="hidden text-right sm:block">
                 <p className="text-body-sm font-semibold text-foreground">{user?.name}</p>
                 <p className="text-caption text-muted-foreground">
