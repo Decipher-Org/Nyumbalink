@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { GuestOnlyRoute, ProtectedRoute } from "@/lib/auth/ProtectedRoute";
+import { NotificationProvider } from "@/lib/notifications/NotificationProvider";
 import { RequireTenantAccess } from "@/lib/subscriptions/RequireTenantAccess";
 import { TenantAccessProvider } from "@/lib/subscriptions/TenantAccessProvider";
 import Landing from "@/routes/Landing";
@@ -28,6 +29,7 @@ import TenantSearch from "@/routes/tenant/Search";
 import TenantPropertyDetails from "@/routes/tenant/PropertyDetails";
 import TenantFavourites from "@/routes/tenant/Favorites";
 import TenantChats from "@/routes/tenant/Chats";
+import TenantNotifications from "@/routes/tenant/Notifications";
 import TenantProfile from "@/routes/tenant/Profile";
 import TenantOnboarding from "@/routes/tenant/Onboarding";
 import { StubPage } from "@/routes/StubPage";
@@ -36,6 +38,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <NotificationProvider>
         <Routes>
           <Route path="/" element={<Landing />} />
 
@@ -107,6 +110,7 @@ export default function App() {
                     backend does not gate it either. */}
                 <Route path="onboarding" element={<TenantOnboarding />} />
                 <Route path="chats" element={<TenantChats />} />
+                <Route path="notifications" element={<TenantNotifications />} />
                 <Route path="profile" element={<TenantProfile />} />
 
                 {/* The catalogue. These four are exactly what
@@ -132,6 +136,7 @@ export default function App() {
             }
           />
         </Routes>
+        </NotificationProvider>
         <Toaster />
       </AuthProvider>
     </BrowserRouter>

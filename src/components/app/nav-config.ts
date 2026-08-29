@@ -43,7 +43,6 @@ export const LANDLORD_NAV: NavItem[] = [
     to: "/landlord/notifications",
     label: "Notifications",
     icon: Bell,
-    demo: "notifications",
     primary: true,
   },
   { to: "/landlord/profile", label: "Profile", icon: User, primary: true },
@@ -55,5 +54,6 @@ export const TENANT_NAV: NavItem[] = [
   { to: "/tenant/search", label: "Search", icon: Search, primary: true },
   { to: "/tenant/favorites", label: "Favourites", icon: Heart, demo: "favorites", primary: true },
   { to: "/tenant/chats", label: "Chats", icon: MessageSquare, demo: "messages", primary: true },
+  { to: "/tenant/notifications", label: "Notifications", icon: Bell },
   { to: "/tenant/profile", label: "Profile", icon: User, primary: true },
 ];
