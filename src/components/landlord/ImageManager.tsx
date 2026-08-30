@@ -20,15 +20,11 @@ import { cn } from "@/lib/utils";
  * The backend allows 12 images per property, counting both. The picker disables
  * itself at the ceiling rather than letting the server reject the save.
  *
- * ## Removing a stored photo leaves the file on the server
+ * ## Removing a stored photo also removes its stored object
  *
- * Removal works by PATCHing back the URLs that survived. The backend only deletes
- * displaced files when the stored value is a relative path, and a value that has
- * made a round trip through this component is an absolute URL, which
- * `discardStoredPath` skips. The photo does disappear from the listing — the file
- * behind it is simply orphaned on disk. Fixing that needs a backend change
- * (accepting stored paths back, or diffing on the server), so it is recorded here
- * rather than papered over.
+ * Removal works by PATCHing back the URLs that survived. The backend normalises
+ * its own public URLs to stable object references before diffing, so displaced
+ * local or Supabase objects are deleted after the database update succeeds.
  */
 
 const MAX_IMAGES = PROPERTY_LIMITS.images.max;
