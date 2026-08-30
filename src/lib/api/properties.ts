@@ -93,7 +93,7 @@ export function archiveProperty(id: string): Promise<unknown> {
 }
 
 /**
- * Replace a property's image set with uploaded files.
+ * Append uploaded files to a property's image set.
  *
  * **Files travel alone, and this is not a style choice.** The backend runs the
  * multipart body through the same validator as JSON, and that validator does no
@@ -103,8 +103,9 @@ export function archiveProperty(id: string): Promise<unknown> {
  * `400 latitude must be a number`. Scalars therefore go as JSON via
  * `createProperty`/`updateProperty`, and files go here on their own.
  *
- * An upload **replaces the whole set** rather than appending, and the displaced
- * files are deleted server-side. Up to 12, JPEG/PNG.
+ * Existing photos are retained. Removing or reordering them is a normal JSON
+ * property update; the backend normalises its public URLs back to stored object
+ * references and deletes displaced objects. Up to 12 total, JPEG/PNG/WebP.
  */
 export function uploadPropertyImages(id: string, images: File[]): Promise<PropertyDetail> {
   const form = new FormData();
