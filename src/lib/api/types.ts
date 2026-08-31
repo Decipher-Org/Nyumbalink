@@ -8,7 +8,7 @@
  *
  * Nothing invented lives here. Fields the mockups show but the schema lacks
  * (`propertyType`, `bathrooms`, `size`, `furnishing`) and features on later
- * milestones (favourites, reviews, view counts) belong to `lib/demo/`.
+ * later features such as view counts belong to `lib/demo/`.
  */
 
 export type Role = "TENANT" | "LANDLORD" | "ADMIN";
@@ -122,6 +122,10 @@ export type PropertyCard = {
   status: PropertyStatus;
   /** Cheapest unit rent in KES, or null when no units exist yet. */
   unitsFrom: number | null;
+  /** Average rating (1–5) or null if unreviewed. */
+  averageRating?: number | null;
+  /** Total count of tenant reviews. */
+  totalReviews?: number;
   createdAt: string;
   /** Distance from search coordinates in kilometers (only present when
    * geolocation search is performed). */
@@ -148,6 +152,8 @@ export type PropertyDetail = {
   longitude: number | null;
   images: string[];
   status: PropertyStatus;
+  averageRating?: number | null;
+  totalReviews?: number;
   landlord: PropertyLandlord | null;
   units: Unit[];
   createdAt?: string;
@@ -174,7 +180,12 @@ export type PropertyWriteInput = {
 };
 
 /** Kenya's coordinate box, from `KE_BOUNDS` in the backend validator. */
-export const KE_BOUNDS = { minLat: -5.5, maxLat: 5.5, minLng: 33.5, maxLng: 42.5 };
+export const KE_BOUNDS = {
+  minLat: -5.5,
+  maxLat: 5.5,
+  minLng: 33.5,
+  maxLng: 42.5,
+};
 
 /** Field limits, mirrored from `validatePropertyCreate` so forms fail locally first. */
 export const PROPERTY_LIMITS = {
@@ -274,7 +285,12 @@ export type UnitUpdateInput = {
 // ---------------------------------------------------------------- payments
 
 /** `PaymentStatus` in `prisma/schema.prisma`. */
-export type PaymentStatus = "PENDING" | "QUEUED" | "SUCCESS" | "FAILED" | "CANCELLED";
+export type PaymentStatus =
+  | "PENDING"
+  | "QUEUED"
+  | "SUCCESS"
+  | "FAILED"
+  | "CANCELLED";
 
 /** `PaymentPurpose`. The first two are priced per unit; the rest are flat lookups. */
 export type PaymentPurpose =
@@ -289,7 +305,11 @@ export type PaymentPurpose =
  * safe for `use-stk-payment` to stop polling. `PENDING`/`QUEUED` both mean "the
  * STK prompt is out there and nobody has answered it yet".
  */
-export const TERMINAL_PAYMENT_STATUSES = ["SUCCESS", "FAILED", "CANCELLED"] as const;
+export const TERMINAL_PAYMENT_STATUSES = [
+  "SUCCESS",
+  "FAILED",
+  "CANCELLED",
+] as const;
 
 export function isTerminalPayment(status: PaymentStatus): boolean {
   return (TERMINAL_PAYMENT_STATUSES as readonly string[]).includes(status);
@@ -450,11 +470,14 @@ export type UnitsExceededDetails = {
 };
 
 /** Narrows `ApiError.details[0]` on a units-exceeded refusal. */
-export function unitsExceededFrom(details: unknown): UnitsExceededDetails | null {
+export function unitsExceededFrom(
+  details: unknown,
+): UnitsExceededDetails | null {
   const first = Array.isArray(details) ? details[0] : null;
   if (!first || typeof first !== "object") return null;
   const d = first as Record<string, unknown>;
-  return typeof d.additionalUnits === "number" && typeof d.topUpAmount === "number"
+  return typeof d.additionalUnits === "number" &&
+    typeof d.topUpAmount === "number"
     ? {
         paidUnits: Number(d.paidUnits ?? 0),
         requestedUnits: Number(d.requestedUnits ?? 0),
@@ -472,6 +495,7 @@ export type NotificationType =
   | "PROPERTY_HIDDEN"
   | "PROPERTY_VIEWED"
   | "NEW_MATCHING_PROPERTY"
+  | "PROPERTY_REVIEWED"
   | "SYSTEM_ALERT";
 
 /**
@@ -487,5 +511,44 @@ export type Notification = {
   data?: Record<string, unknown>;
   isRead: boolean;
   readAt?: string;
+  createdAt: string;
+};
+
+// ------------------------------------------------------------------- reviews
+
+export type Review = {
+  id: string;
+  propertyId: string;
+  rating: number;
+  comment?: string;
+  tenant: { name: string };
+  /** Whether the authenticated caller owns this review. */
+  isOwn: boolean;
+  createdAt: string;
+};
+
+export type ReviewCreateInput = {
+  rating: number;
+  comment?: string;
+};
+
+export type ReviewMeta = {
+  averageRating: number | null;
+  totalReviews: number;
+};
+
+// ----------------------------------------------------------------- favorites
+
+export type FavoriteItem = {
+  id: string;
+  property: {
+    id: string;
+    title: string;
+    county: string;
+    town: string;
+    estate: string | null;
+    images: string[];
+    unitsFrom: number | null;
+  };
   createdAt: string;
 };

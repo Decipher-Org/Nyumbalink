@@ -3,26 +3,13 @@ import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import type { PropertyCard } from "@/lib/api/types";
-import { useFavourites } from "@/lib/demo/favourites";
-import { demoRating } from "@/lib/demo/tenant";
+import { useFavorites } from "@/lib/favorites/FavoritesProvider";
 import { formatLocation, formatRentPerMonth } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
  * One listing, as a tenant sees it. Shared by Home, Search and Favourites so a
  * property looks identical wherever it appears.
- *
- * ## What is real and what isn't
- *
- * Title, town, estate, image and "from" price are all from `GET /properties`.
- * The rating is seeded sample data (`DEMO_FEATURES.reviews`) and the heart writes
- * to an in-memory store (`DEMO_FEATURES.favorites`) — both carry their own
- * marker, and the card takes `showRating` so a caller can leave the fake number
- * off entirely rather than being forced to display it.
- *
- * No status badge: `GET /properties` returns only `ACTIVE` rows to a tenant, so
- * a status pill on every card would say the same word every time and teach
- * nothing.
  */
 export function ListingCard({
   property,
@@ -33,9 +20,9 @@ export function ListingCard({
   showRating?: boolean;
   className?: string;
 }) {
-  const { isSaved, toggle } = useFavourites();
+  const { isSaved, toggle, isPending } = useFavorites();
   const saved = isSaved(property.id);
-  const rating = demoRating(property.id);
+  const favoritePending = isPending(property.id);
   const cover = property.images[0];
 
   return (
@@ -64,13 +51,21 @@ export function ListingCard({
         <button
           type="button"
           onClick={() => toggle(property.id)}
+          disabled={favoritePending}
           aria-pressed={saved}
-          aria-label={saved ? `Remove ${property.title} from favourites` : `Save ${property.title}`}
-          className="absolute top-2.5 right-2.5 z-10 flex size-11 items-center justify-center rounded-full bg-card/90 text-muted-foreground backdrop-blur transition-colors hover:text-destructive-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          aria-label={
+            saved
+              ? `Remove ${property.title} from favourites`
+              : `Save ${property.title}`
+          }
+          className="absolute top-2.5 right-2.5 z-10 flex size-11 items-center justify-center rounded-full bg-card/90 text-muted-foreground backdrop-blur transition-colors hover:text-destructive-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
         >
           <Heart
             aria-hidden="true"
-            className={cn("size-5", saved && "fill-destructive-strong text-destructive-strong")}
+            className={cn(
+              "size-5",
+              saved && "fill-destructive-strong text-destructive-strong",
+            )}
           />
         </button>
       </div>
@@ -80,19 +75,33 @@ export function ListingCard({
           {/* The whole card is the link target; `absolute inset-0` below covers
               it without nesting interactive elements inside an anchor. */}
           <h3 className="text-body font-semibold text-foreground">
-            <Link to={`/tenant/properties/${property.id}`} className="hover:underline">
+            <Link
+              to={`/tenant/properties/${property.id}`}
+              className="hover:underline"
+            >
               <span className="absolute inset-0 z-0" aria-hidden="true" />
               <span className="line-clamp-2">{property.title}</span>
             </Link>
           </h3>
 
-          {showRating ? (
+          {showRating && typeof property.averageRating === "number" ? (
             <span
               className="flex shrink-0 items-center gap-1 text-caption text-muted-foreground"
-              title="Sample rating — reviews are not built yet"
+              title={`${property.averageRating.toFixed(1)} rating (${property.totalReviews ?? 0} ${property.totalReviews === 1 ? "review" : "reviews"})`}
             >
-              <Star aria-hidden="true" className="size-3.5 fill-warning text-warning" />
-              <span className="tabular-nums">{rating.score.toFixed(1)}</span>
+              <Star
+                aria-hidden="true"
+                className="size-3.5 fill-warning text-warning"
+              />
+              <span className="tabular-nums">
+                {property.averageRating.toFixed(1)}
+              </span>
+              {typeof property.totalReviews === "number" &&
+              property.totalReviews > 0 ? (
+                <span className="text-muted-foreground/70 font-normal">
+                  ({property.totalReviews})
+                </span>
+              ) : null}
             </span>
           ) : null}
         </div>
@@ -117,7 +126,9 @@ export function ListingCard({
             <Badge variant="secondary">Price on request</Badge>
           ) : (
             <p className="text-body font-semibold text-primary">
-              <span className="text-caption font-normal text-muted-foreground">from </span>
+              <span className="text-caption font-normal text-muted-foreground">
+                from{" "}
+              </span>
               {formatRentPerMonth(property.unitsFrom)}
             </p>
           )}

@@ -13,6 +13,7 @@ import {
   Info,
   ShieldAlert,
   Sparkles,
+  Star,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -46,6 +47,10 @@ const TYPE_ICONS: Record<NotificationType, IconConfig> = {
     icon: Sparkles,
     className: "bg-info-soft text-info-strong",
   },
+  PROPERTY_REVIEWED: {
+    icon: Star,
+    className: "bg-warning-soft text-warning-strong",
+  },
   SYSTEM_ALERT: { icon: Info, className: "bg-secondary text-primary" },
 };
 
@@ -56,7 +61,8 @@ function iconFor(type: NotificationType): IconConfig {
 // ---------------------------------------------------------------- component
 
 export default function NotificationList() {
-  const { refreshUnreadCount, unreadCount: totalUnreadCount } = useNotifications();
+  const { refreshUnreadCount, unreadCount: totalUnreadCount } =
+    useNotifications();
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(1);
   const limit = 20;
@@ -123,7 +129,7 @@ export default function NotificationList() {
             ? "Loading…"
             : items.length === 0
               ? "You're all caught up."
-            : pageUnreadCount === 0
+              : pageUnreadCount === 0
                 ? `${items.length} notifications.`
                 : `${pageUnreadCount} unread of ${items.length}.`
         }

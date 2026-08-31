@@ -7,7 +7,10 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { StatCard, StatCardSkeleton } from "@/components/app/StatCard";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/States";
-import { useLandlordGate, VerificationNotice } from "@/components/landlord/VerificationNotice";
+import {
+  useLandlordGate,
+  VerificationNotice,
+} from "@/components/landlord/VerificationNotice";
 import { Button } from "@/components/ui/button";
 import { demoLandlordStats, demoViewsTrend } from "@/lib/demo/landlord";
 import { formatDate, formatLocation, formatRentPerMonth } from "@/lib/format";
@@ -23,7 +26,9 @@ import { usePortfolio } from "@/lib/hooks/use-portfolio";
 export default function LandlordDashboard() {
   const gate = useLandlordGate();
   // Before onboarding every property call is a 403, so don't make them.
-  const { data, error, loading, reload } = usePortfolio({ enabled: gate !== "onboarding" });
+  const { data, error, loading, reload } = usePortfolio({
+    enabled: gate !== "onboarding",
+  });
 
   const properties = data?.properties ?? [];
   const totals = data?.totals;
@@ -57,24 +62,38 @@ export default function LandlordDashboard() {
         <div className="space-y-6">
           {data?.truncated ? (
             <p className="rounded-lg border border-border bg-surface px-4 py-3 text-body-sm text-muted-foreground">
-              Showing the {properties.length} most recent of {data.serverTotal} properties. The
-              totals below cover those {properties.length}.
+              Showing the {properties.length} most recent of {data.serverTotal}{" "}
+              properties. The totals below cover those {properties.length}.
             </p>
           ) : null}
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
             {loading || !totals ? (
-              Array.from({ length: 6 }, (_, index) => <StatCardSkeleton key={index} />)
+              Array.from({ length: 6 }, (_, index) => (
+                <StatCardSkeleton key={index} />
+              ))
             ) : (
               <>
-                <StatCard label="Properties" value={totals.properties} icon={Building2} />
+                <StatCard
+                  label="Properties"
+                  value={totals.properties}
+                  icon={Building2}
+                />
                 <StatCard
                   label="Active listings"
                   value={totals.active}
-                  note={totals.drafts > 0 ? `${totals.drafts} still in draft` : undefined}
+                  note={
+                    totals.drafts > 0
+                      ? `${totals.drafts} still in draft`
+                      : undefined
+                  }
                   icon={House}
                 />
-                <StatCard label="Units" value={totals.totalUnits} icon={DoorOpen} />
+                <StatCard
+                  label="Units"
+                  value={totals.totalUnits}
+                  icon={DoorOpen}
+                />
                 <StatCard
                   label="Vacant units"
                   value={totals.vacantUnits}
@@ -90,7 +109,11 @@ export default function LandlordDashboard() {
                   value={demoStats.monthlyViews.toLocaleString("en-KE")}
                   demo="views"
                 />
-                <StatCard label="Saved by tenants" value={demoStats.favourites} demo="favorites" />
+                <StatCard
+                  label="Saved by tenants"
+                  value={demoStats.favourites}
+                  icon={Heart}
+                />
               </>
             )}
           </div>
@@ -107,7 +130,9 @@ export default function LandlordDashboard() {
 
             <section className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
               <div className="mb-1 flex items-start justify-between gap-3">
-                <h2 className="text-h3 text-foreground">Views over the last 6 months</h2>
+                <h2 className="text-h3 text-foreground">
+                  Views over the last 6 months
+                </h2>
                 <DemoBadge feature="views" />
               </div>
               <p className="mb-4 text-body-sm text-muted-foreground">
@@ -182,13 +207,15 @@ export default function LandlordDashboard() {
                           {property.title}
                         </p>
                         <p className="truncate text-body-sm text-muted-foreground">
-                          {formatLocation(property)} · added {formatDate(property.createdAt)}
+                          {formatLocation(property)} · added{" "}
+                          {formatDate(property.createdAt)}
                         </p>
                       </div>
 
                       <div className="hidden text-right sm:block">
                         <p className="text-body-sm font-medium text-foreground">
-                          {property.totalUnits} {property.totalUnits === 1 ? "unit" : "units"}
+                          {property.totalUnits}{" "}
+                          {property.totalUnits === 1 ? "unit" : "units"}
                         </p>
                         <p className="text-caption text-muted-foreground">
                           {property.availableUnits} vacant
@@ -199,7 +226,9 @@ export default function LandlordDashboard() {
                         <p className="text-body-sm font-medium text-foreground">
                           {formatRentPerMonth(property.unitsFrom)}
                         </p>
-                        <p className="text-caption text-muted-foreground">from</p>
+                        <p className="text-caption text-muted-foreground">
+                          from
+                        </p>
                       </div>
 
                       <StatusBadge status={property.status} />
@@ -222,8 +251,12 @@ export default function LandlordDashboard() {
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-lg bg-surface px-4 py-3">
-                <p className="text-body-sm text-muted-foreground">Unread enquiries</p>
-                <p className="mt-1 text-h2 text-foreground">{demoStats.unreadMessages}</p>
+                <p className="text-body-sm text-muted-foreground">
+                  Unread enquiries
+                </p>
+                <p className="mt-1 text-h2 text-foreground">
+                  {demoStats.unreadMessages}
+                </p>
               </div>
               <div className="flex items-center gap-2.5 rounded-lg bg-surface px-4 py-3">
                 <Heart className="size-4 shrink-0 text-muted-foreground" />
@@ -234,7 +267,8 @@ export default function LandlordDashboard() {
               <div className="flex items-center gap-2.5 rounded-lg bg-surface px-4 py-3">
                 <Eye className="size-4 shrink-0 text-muted-foreground" />
                 <p className="text-body-sm text-muted-foreground">
-                  {demoStats.monthlyViews.toLocaleString("en-KE")} views this month
+                  {demoStats.monthlyViews.toLocaleString("en-KE")} views this
+                  month
                 </p>
               </div>
             </div>

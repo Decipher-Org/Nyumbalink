@@ -35,7 +35,12 @@ export type NavItem = {
 
 export const LANDLORD_NAV: NavItem[] = [
   { to: "/landlord", label: "Dashboard", icon: LayoutDashboard, primary: true },
-  { to: "/landlord/properties", label: "Properties", icon: Building2, primary: true },
+  {
+    to: "/landlord/properties",
+    label: "Properties",
+    icon: Building2,
+    primary: true,
+  },
   { to: "/landlord/units", label: "Units", icon: Home, primary: true },
   { to: "/landlord/subscriptions", label: "Subscription", icon: Wallet },
   { to: "/landlord/payments", label: "Payments", icon: CreditCard },
@@ -52,8 +57,14 @@ export const LANDLORD_NAV: NavItem[] = [
 export const TENANT_NAV: NavItem[] = [
   { to: "/tenant", label: "Home", icon: Home, primary: true },
   { to: "/tenant/search", label: "Search", icon: Search, primary: true },
-  { to: "/tenant/favorites", label: "Favourites", icon: Heart, demo: "favorites", primary: true },
-  { to: "/tenant/chats", label: "Chats", icon: MessageSquare, demo: "messages", primary: true },
+  { to: "/tenant/favorites", label: "Favourites", icon: Heart, primary: true },
+  {
+    to: "/tenant/chats",
+    label: "Chats",
+    icon: MessageSquare,
+    demo: "messages",
+    primary: true,
+  },
   { to: "/tenant/notifications", label: "Notifications", icon: Bell },
   { to: "/tenant/profile", label: "Profile", icon: User, primary: true },
 ];

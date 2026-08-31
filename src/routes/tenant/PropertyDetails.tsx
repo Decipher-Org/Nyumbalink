@@ -12,61 +12,77 @@ import {
   Ruler,
   Sofa,
   Star,
+  Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 import { DemoBadge } from "@/components/app/DemoBadge";
 import { EmptyState, ErrorState } from "@/components/app/States";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api/client";
 import { getProperty } from "@/lib/api/properties";
-import type { Unit } from "@/lib/api/types";
-import { useFavourites } from "@/lib/demo/favourites";
-import { demoRating, demoReviews, demoSpecs } from "@/lib/demo/tenant";
+import { createReview, deleteReview, listReviews } from "@/lib/api/reviews";
+import type { Review, Unit } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { demoSpecs } from "@/lib/demo/tenant";
+import { useFavorites } from "@/lib/favorites/FavoritesProvider";
 import { formatAmenity, formatDate, formatKes, formatLocation, formatRentPerMonth } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
 import { cn } from "@/lib/utils";
 
-/**
- * One listing in full.
- *
- * ## Real
- *
- * Title, description, town, estate, every image, and each unit type with its
- * rent, deposit, amenities and live vacancy count — all from
- * `GET /properties/:id`. The landlord card too, from the embedded `landlord`
- * object.
- *
- * ## Not real, and marked
- *
- * The rating and review list are seeded (Milestone 8). Property type, bathrooms,
- * size and furnishing do not exist on the `Property` model at all, so they are
- * seeded and sit behind a single shared marker rather than being scattered as
- * four separate fake facts. In-app messaging is not on the roadmap, so the
- * Message button is inert — but **Call is real**, because `mpesaNumber` is a
- * genuine phone number the landlord supplied.
- *
- * ## The 403 matters here
- *
- * A listing can be hidden or archived between the search results being rendered
- * and this page being opened, and the backend answers `403 PROPERTY_HIDDEN`
- * rather than a 404. Treating that as a generic failure would tell a tenant
- * "something went wrong" when the truthful answer is "this one is no longer
- * listed", so it gets its own branch.
- */
 export default function TenantPropertyDetails() {
   const { propertyId } = useParams<{ propertyId: string }>();
-  const { isSaved, toggle } = useFavourites();
+  const { user } = useAuth();
+  const { isSaved, toggle, isPending } = useFavorites();
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewItems, setReviewItems] = useState<Review[]>([]);
 
   const property = useAsync(
     (signal) => getProperty(propertyId ?? "", signal),
     [propertyId],
   );
+
+  const reviews = useAsync(
+    (signal) =>
+      listReviews(
+        propertyId ?? "",
+        { page: reviewPage, limit: 20 },
+        signal,
+      ),
+    [propertyId, reviewPage],
+  );
+
+  useEffect(() => {
+    setReviewPage(1);
+    setReviewItems([]);
+  }, [propertyId]);
+
+  useEffect(() => {
+    if (!reviews.data) return;
+    const responsePage = reviews.data.pagination?.page ?? 1;
+    setReviewItems((previous) => {
+      if (responsePage === 1) return reviews.data?.items ?? [];
+      const byId = new Map(previous.map((review) => [review.id, review]));
+      for (const review of reviews.data?.items ?? []) byId.set(review.id, review);
+      return Array.from(byId.values());
+    });
+  }, [reviews.data]);
 
   if (property.loading) {
     return <DetailSkeleton />;
@@ -83,7 +99,7 @@ export default function TenantPropertyDetails() {
           <EmptyState
             icon={Building2}
             title="This listing isn't available"
-            body="It may have been rented out or taken down. There are other homes in Kilifi to look at."
+            body="It may have been rented out or taken down. There are other homes to look at."
             action={
               <Button asChild>
                 <Link to="/tenant/search">Back to search</Link>
@@ -101,8 +117,7 @@ export default function TenantPropertyDetails() {
   if (!data) return null;
 
   const saved = isSaved(data.id);
-  const rating = demoRating(data.id);
-  const reviews = demoReviews(data.id);
+  const favoritePending = isPending(data.id);
   const specs = demoSpecs(data.id);
   const landlordName = data.landlord?.businessName?.trim() || "Private landlord";
   const cheapest = data.units.reduce<number | null>(
@@ -110,12 +125,40 @@ export default function TenantPropertyDetails() {
     null,
   );
   const vacantTypes = data.units.filter((unit) => unit.vacancy).length;
+  const averageRating = reviews.data?.meta?.averageRating ?? data.averageRating;
+  const totalReviews = reviews.data?.meta?.totalReviews ?? data.totalReviews ?? reviewItems.length;
+  const reviewPagination = reviews.data?.pagination;
+  const hasMoreReviews = Boolean(
+    reviewPagination && reviewPagination.page < reviewPagination.totalPages,
+  );
+
+  const refreshReviews = () => {
+    setReviewItems([]);
+    if (reviewPage === 1) reviews.reload();
+    else setReviewPage(1);
+  };
+
+  const handleReviewAdded = () => {
+    refreshReviews();
+    void property.reload();
+  };
+
+  const handleReviewDeleted = async (reviewId: string) => {
+    try {
+      await deleteReview(reviewId);
+      toast.success("Review deleted.");
+      refreshReviews();
+      void property.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete review.");
+    }
+  };
 
   return (
     <div className="space-y-6">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link to="/tenant/search">
-          <ArrowLeft />
+          <ArrowLeft className="size-4" />
           Back to search
         </Link>
       </Button>
@@ -143,6 +186,7 @@ export default function TenantPropertyDetails() {
                 variant="outline"
                 size="icon"
                 onClick={() => toggle(data.id)}
+                disabled={favoritePending}
                 aria-pressed={saved}
                 aria-label={saved ? "Remove from favourites" : "Save this listing"}
                 className="shrink-0"
@@ -163,17 +207,22 @@ export default function TenantPropertyDetails() {
                 <Badge variant="secondary">Price on request</Badge>
               )}
 
-              <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
-                <Star aria-hidden="true" className="size-4 fill-warning text-warning" />
-                <span className="tabular-nums">{rating.score.toFixed(1)}</span>
-                <span>({rating.count})</span>
-                <DemoBadge feature="reviews" />
-              </span>
+              {typeof averageRating === "number" && averageRating > 0 ? (
+                <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
+                  <Star aria-hidden="true" className="size-4 fill-warning text-warning" />
+                  <span className="tabular-nums font-semibold text-foreground">{averageRating.toFixed(1)}</span>
+                  <span>({totalReviews} {totalReviews === 1 ? "review" : "reviews"})</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
+                  <Star aria-hidden="true" className="size-4 text-muted-foreground/30" />
+                  <span>No reviews yet</span>
+                </span>
+              )}
             </div>
           </section>
 
-          {/* One marker for the whole row rather than four scattered badges: every
-              value in it comes from the same missing-schema gap. */}
+          {/* At a glance specs */}
           <section className="rounded-xl border border-border bg-card p-5">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-h3 text-foreground">At a glance</h2>
@@ -228,35 +277,74 @@ export default function TenantPropertyDetails() {
             )}
           </section>
 
-          <section>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-h3 text-foreground">Reviews</h2>
-              <DemoBadge feature="reviews" showLabel />
+          {/* Real Reviews Section */}
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-h3 text-foreground">Reviews</h2>
+                <p className="text-body-sm text-muted-foreground">
+                  {totalReviews > 0
+                    ? `${totalReviews} ${totalReviews === 1 ? "review" : "reviews"} from tenants`
+                    : "No reviews yet for this home"}
+                </p>
+              </div>
+
+              {user?.role === "TENANT" ? (
+                <ReviewModal propertyId={data.id} onSubmitted={handleReviewAdded} />
+              ) : null}
             </div>
-            <ul className="mt-3 space-y-3">
-              {reviews.map((review) => (
-                <li key={review.id} className="rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-body font-semibold text-foreground">{review.author}</p>
-                    <span className="flex shrink-0 items-center gap-1 text-caption text-muted-foreground">
-                      {/* Number as well as stars: the count is the fact, the
-                          stars are decoration. */}
-                      <Star aria-hidden="true" className="size-3.5 fill-warning text-warning" />
-                      <span className="tabular-nums">{review.rating}.0</span>
-                    </span>
-                  </div>
-                  <p className="mt-1 text-caption text-muted-foreground">
-                    {formatDate(review.at)}
-                  </p>
-                  <p className="mt-2 text-body-sm text-muted-foreground">{review.body}</p>
-                </li>
-              ))}
-            </ul>
+
+            {reviews.loading && !reviews.data ? (
+              <div className="space-y-3">
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-24 w-full rounded-xl" />
+              </div>
+            ) : reviews.error && reviewItems.length === 0 ? (
+              <ErrorState error={reviews.error} onRetry={reviews.reload} />
+            ) : reviewItems.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card p-6 text-center">
+                <p className="text-body text-muted-foreground">
+                  No one has reviewed this property yet.
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {reviewItems.map((rev) => (
+                  <ReviewItem
+                    key={rev.id}
+                    review={rev}
+                    canDelete={rev.isOwn}
+                    onDelete={() => handleReviewDeleted(rev.id)}
+                  />
+                ))}
+              </ul>
+            )}
+
+            {reviews.error && reviewItems.length > 0 ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+                <p className="text-body-sm text-destructive-strong">
+                  Couldn&apos;t load more reviews.
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={reviews.reload}>
+                  Retry
+                </Button>
+              </div>
+            ) : hasMoreReviews ? (
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={reviews.loading}
+                  onClick={() => setReviewPage((page) => page + 1)}
+                >
+                  {reviews.loading ? "Loading…" : "Load more reviews"}
+                </Button>
+              </div>
+            ) : null}
           </section>
         </div>
 
-        {/* Landlord card. Sticky from lg up so the contact details stay reachable
-            while reading a long description. */}
+        {/* Landlord card. Sticky from lg up so the contact details stay reachable */}
         <aside className="lg:col-span-1">
           <div className="space-y-4 rounded-xl border border-border bg-card p-5 lg:sticky lg:top-22">
             <div className="flex items-center gap-3">
@@ -284,9 +372,8 @@ export default function TenantPropertyDetails() {
             {data.landlord?.mpesaNumber ? (
               <>
                 <Button asChild className="w-full">
-                  {/* Real: the number the landlord gave us. */}
                   <a href={`tel:${data.landlord.mpesaNumber}`}>
-                    <Phone />
+                    <Phone className="size-4" />
                     Call {data.landlord.mpesaNumber}
                   </a>
                 </Button>
@@ -302,7 +389,7 @@ export default function TenantPropertyDetails() {
 
             <div className="space-y-2">
               <Button type="button" variant="outline" className="w-full" disabled>
-                <MessageSquare />
+                <MessageSquare className="size-4" />
                 Message landlord
               </Button>
               <p className="flex items-start gap-1.5 text-caption text-muted-foreground">
@@ -320,6 +407,194 @@ export default function TenantPropertyDetails() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function ReviewItem({
+  review,
+  canDelete,
+  onDelete,
+}: {
+  review: Review;
+  canDelete: boolean;
+  onDelete: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await onDelete();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <li className="rounded-xl border border-border bg-card p-4 transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-body font-semibold text-foreground">{review.tenant.name}</p>
+          <p className="mt-0.5 text-caption text-muted-foreground">{formatDate(review.createdAt)}</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="flex shrink-0 items-center gap-1 text-caption text-muted-foreground">
+            <Star aria-hidden="true" className="size-3.5 fill-warning text-warning" />
+            <span className="tabular-nums font-semibold">{review.rating}.0</span>
+          </span>
+
+          {canDelete ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              aria-label="Delete review"
+              className="text-muted-foreground/60 hover:text-destructive transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {review.comment ? (
+        <p className="mt-2.5 text-body-sm text-muted-foreground whitespace-pre-line">
+          {review.comment}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+function ReviewModal({
+  propertyId,
+  onSubmitted,
+}: {
+  propertyId: string;
+  onSubmitted: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await createReview(propertyId, {
+        rating,
+        comment: comment.trim() || undefined,
+      });
+      toast.success("Thank you! Your review has been posted.");
+      setOpen(false);
+      setComment("");
+      setRating(5);
+      onSubmitted();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "ALREADY_REVIEWED") {
+        toast.error("You have already reviewed this property.");
+      } else {
+        toast.error(err instanceof Error ? err.message : "Failed to submit review.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const activeRating = hoverRating ?? rating;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Star className="size-3.5" />
+          Write a review
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Rate this property</DialogTitle>
+            <DialogDescription>
+              Share what you noticed about this home. One review per property.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-5 space-y-4">
+            <div>
+              <label className="text-caption font-medium text-foreground block mb-2">
+                Your rating
+              </label>
+              <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Rating">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(null)}
+                    aria-label={`${star} star${star === 1 ? "" : "s"}`}
+                    aria-checked={rating === star}
+                    role="radio"
+                    className="p-1 rounded-md transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Star
+                      className={cn(
+                        "size-7 transition-colors",
+                        star <= activeRating
+                          ? "fill-warning text-warning"
+                          : "text-muted-foreground/30 hover:text-muted-foreground/50",
+                      )}
+                    />
+                  </button>
+                ))}
+                <span className="ml-2 text-body-sm font-medium text-muted-foreground">
+                  {activeRating} / 5 stars
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="review-comment" className="text-caption font-medium text-foreground">
+                  Feedback (optional)
+                </label>
+                <span className="text-caption text-muted-foreground">
+                  {comment.length}/1000
+                </span>
+              </div>
+              <Textarea
+                id="review-comment"
+                placeholder="How was the water pressure, landlord responsiveness, neighborhood noise, etc.?"
+                value={comment}
+                maxLength={1000}
+                onChange={(e) => setComment(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Posting..." : "Post review"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -343,11 +618,6 @@ function SpecItem({
   );
 }
 
-/**
- * A unit type. `vacancy` is derived server-side from `availableUnits > 0` and is
- * never stored, so the count is the fact and the label follows from it — the
- * status carries an icon-free but worded badge rather than colour alone.
- */
 function UnitRow({ unit }: { unit: Unit }) {
   return (
     <li className="rounded-xl border border-border bg-card p-4">
@@ -387,12 +657,6 @@ function UnitRow({ unit }: { unit: Unit }) {
   );
 }
 
-/**
- * Image gallery: one large frame plus thumbnails.
- *
- * The backend caps a set at 12 and may store none at all, so the empty case is a
- * real state rather than a defensive branch.
- */
 function Gallery({ images, title }: { images: string[]; title: string }) {
   const [active, setActive] = useState(0);
 
