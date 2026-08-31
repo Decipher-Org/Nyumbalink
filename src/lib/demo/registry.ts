@@ -22,8 +22,6 @@
  */
 
 export type DemoFeatureId =
-  | "favorites"
-  | "reviews"
   | "views"
   | "messages"
   | "amenityFilter"
@@ -40,16 +38,6 @@ export type DemoFeature = {
 };
 
 export const DEMO_FEATURES: Record<DemoFeatureId, DemoFeature> = {
-  favorites: {
-    label: "Favourites",
-    milestone: "Milestone 8",
-    note: "Saving a property is a preview — favourites are not stored yet, so they reset on reload.",
-  },
-  reviews: {
-    label: "Ratings & reviews",
-    milestone: "Milestone 8",
-    note: "Sample ratings. Real reviews arrive with the reviews milestone.",
-  },
   views: {
     label: "Views & trends",
     milestone: "not yet scheduled",

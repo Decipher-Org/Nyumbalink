@@ -1,4 +1,13 @@
-import { Briefcase, Camera, Heart, Loader2, Mail, Phone, Sparkles, User } from "lucide-react";
+import {
+  Briefcase,
+  Camera,
+  Heart,
+  Loader2,
+  Mail,
+  Phone,
+  Sparkles,
+  User,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -8,7 +17,6 @@ import {
   DeactivateSection,
   SecuritySection,
 } from "@/components/app/AccountSettings";
-import { DemoBadge } from "@/components/app/DemoBadge";
 import { PageHeader } from "@/components/app/PageHeader";
 import { ErrorState } from "@/components/app/States";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,9 +40,12 @@ import {
   updateMyTenantProfile,
   uploadProfilePhoto,
 } from "@/lib/api/profiles";
-import type { Gender, TenantProfile as TenantProfileRecord } from "@/lib/api/types";
+import type {
+  Gender,
+  TenantProfile as TenantProfileRecord,
+} from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { useFavourites } from "@/lib/demo/favourites";
+import { useFavorites } from "@/lib/favorites/FavoritesProvider";
 import { formatDate, formatTimeLeft } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
 import { useTenantAccess } from "@/lib/subscriptions/TenantAccessProvider";
@@ -77,7 +88,7 @@ const UNSET = "unset";
 
 export default function TenantProfile() {
   const { user } = useAuth();
-  const { count } = useFavourites();
+  const { count } = useFavorites();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const profile = useAsync(async () => {
@@ -107,7 +118,8 @@ export default function TenantProfile() {
   }, [record?.id]);
 
   const dirty =
-    occupation !== (record?.occupation ?? "") || gender !== (record?.gender ?? UNSET);
+    occupation !== (record?.occupation ?? "") ||
+    gender !== (record?.gender ?? UNSET);
 
   /**
    * Guarantees a profile row exists so a `PATCH`-only path (the photo upload) has
@@ -129,7 +141,9 @@ export default function TenantProfile() {
   async function save() {
     const trimmed = occupation.trim();
     if (trimmed !== "" && (trimmed.length < 2 || trimmed.length > 100)) {
-      setErrors({ occupation: "Between 2 and 100 characters, or leave it empty." });
+      setErrors({
+        occupation: "Between 2 and 100 characters, or leave it empty.",
+      });
       return;
     }
     setErrors({});
@@ -142,16 +156,22 @@ export default function TenantProfile() {
         gender: gender === UNSET ? null : (gender as Gender),
       };
 
-      const next = record ? await updateMyTenantProfile(input) : await createTenantProfile(input);
+      const next = record
+        ? await updateMyTenantProfile(input)
+        : await createTenantProfile(input);
       profile.setData(next);
       toast.success("Profile updated.");
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message);
-        const details = err.details as Array<{ field?: string; message?: string }>;
+        const details = err.details as Array<{
+          field?: string;
+          message?: string;
+        }>;
         const mapped: Record<string, string> = {};
         for (const detail of details ?? []) {
-          if (detail?.field && detail.message) mapped[detail.field] = detail.message;
+          if (detail?.field && detail.message)
+            mapped[detail.field] = detail.message;
         }
         if (Object.keys(mapped).length > 0) setErrors(mapped);
       } else {
@@ -173,7 +193,9 @@ export default function TenantProfile() {
       await profile.reload();
       toast.success("Photo updated.");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Couldn't upload that photo.");
+      toast.error(
+        err instanceof ApiError ? err.message : "Couldn't upload that photo.",
+      );
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -208,7 +230,10 @@ export default function TenantProfile() {
 
   return (
     <>
-      <PageHeader title="Profile" description="Your details, and how you sign in." />
+      <PageHeader
+        title="Profile"
+        description="Your details, and how you sign in."
+      />
 
       <div className="max-w-4xl space-y-6">
         <div className="grid gap-6 lg:grid-cols-3">
@@ -230,7 +255,11 @@ export default function TenantProfile() {
                   className="absolute right-0 bottom-0 size-9 rounded-full"
                   onClick={() => fileRef.current?.click()}
                 >
-                  {uploading ? <Loader2 className="animate-spin" /> : <Camera />}
+                  {uploading ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Camera />
+                  )}
                 </Button>
                 <input
                   ref={fileRef}
@@ -243,7 +272,9 @@ export default function TenantProfile() {
 
               <p className="mt-4 text-h3 text-foreground">{displayName}</p>
               <p className="mt-1 text-caption text-muted-foreground">
-                {record ? `Tenant since ${formatDate(record.createdAt)}` : "Tenant"}
+                {record
+                  ? `Tenant since ${formatDate(record.createdAt)}`
+                  : "Tenant"}
               </p>
             </div>
 
@@ -252,7 +283,11 @@ export default function TenantProfile() {
             <dl className="space-y-3 text-body-sm">
               <ReadOnlyRow icon={User} label="Name" value={user?.name} />
               <ReadOnlyRow icon={Mail} label="Email" value={user?.email} />
-              <ReadOnlyRow icon={Phone} label="Phone" value={user?.phoneNumber ?? "Not provided"} />
+              <ReadOnlyRow
+                icon={Phone}
+                label="Phone"
+                value={user?.phoneNumber ?? "Not provided"}
+              />
             </dl>
 
             <Separator className="my-5" />
@@ -261,10 +296,12 @@ export default function TenantProfile() {
               to="/tenant/favorites"
               className="flex min-h-11 items-center gap-3 rounded-lg px-1 text-body-sm text-foreground transition-colors hover:text-primary"
             >
-              <Heart aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+              <Heart
+                aria-hidden="true"
+                className="size-4 shrink-0 text-muted-foreground"
+              />
               <span className="flex-1">Saved homes</span>
               <span className="font-semibold tabular-nums">{count}</span>
-              <DemoBadge feature="favorites" />
             </Link>
           </section>
 
@@ -273,14 +310,17 @@ export default function TenantProfile() {
               <div>
                 <h2 className="text-h3 text-foreground">About you</h2>
                 <p className="mt-1 text-body-sm text-muted-foreground">
-                  Optional, and never shown on a listing. It helps landlords place your enquiry.
+                  Optional, and never shown on a listing. It helps landlords
+                  place your enquiry.
                 </p>
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-baseline justify-between gap-2">
                   <Label htmlFor="occupation">Occupation</Label>
-                  <span className="text-caption text-muted-foreground">Optional</span>
+                  <span className="text-caption text-muted-foreground">
+                    Optional
+                  </span>
                 </div>
                 <div className="relative">
                   <Briefcase
@@ -298,7 +338,9 @@ export default function TenantProfile() {
                   />
                 </div>
                 {errors.occupation ? (
-                  <p className="text-caption text-destructive-strong">{errors.occupation}</p>
+                  <p className="text-caption text-destructive-strong">
+                    {errors.occupation}
+                  </p>
                 ) : (
                   <p className="text-caption text-muted-foreground">
                     Leave it empty to skip. Clearing a saved value removes it.
@@ -309,7 +351,9 @@ export default function TenantProfile() {
               <div className="space-y-1.5">
                 <div className="flex items-baseline justify-between gap-2">
                   <Label htmlFor="gender">Gender</Label>
-                  <span className="text-caption text-muted-foreground">Optional</span>
+                  <span className="text-caption text-muted-foreground">
+                    Optional
+                  </span>
                 </div>
                 <Select value={gender} onValueChange={setGender}>
                   <SelectTrigger id="gender" className="w-full">
@@ -325,12 +369,18 @@ export default function TenantProfile() {
                   </SelectContent>
                 </Select>
                 {errors.gender ? (
-                  <p className="text-caption text-destructive-strong">{errors.gender}</p>
+                  <p className="text-caption text-destructive-strong">
+                    {errors.gender}
+                  </p>
                 ) : null}
               </div>
 
               <div className="flex justify-end">
-                <Button type="button" disabled={saving || !dirty} onClick={save}>
+                <Button
+                  type="button"
+                  disabled={saving || !dirty}
+                  onClick={save}
+                >
                   {saving ? "Saving…" : "Save changes"}
                 </Button>
               </div>
@@ -387,13 +437,14 @@ function BrowsingPassCard() {
             <Skeleton className="mt-2 h-4 w-56" />
           ) : access.active ? (
             <p className="mt-1 text-body-sm text-muted-foreground">
-              {formatTimeLeft(access.expiresAt)} — expires {formatDate(access.expiresAt)}. Buying
-              again before then adds to this, so you keep the time you've paid for.
+              {formatTimeLeft(access.expiresAt)} — expires{" "}
+              {formatDate(access.expiresAt)}. Buying again before then adds to
+              this, so you keep the time you've paid for.
             </p>
           ) : (
             <p className="mt-1 text-body-sm text-muted-foreground">
-              You need a pass to see listings. Your account, chats and saved details stay
-              available either way.
+              You need a pass to see listings. Your account, chats and saved
+              details stay available either way.
             </p>
           )}
 
@@ -419,7 +470,10 @@ function ReadOnlyRow({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <Icon
+        aria-hidden="true"
+        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+      />
       <div className="min-w-0">
         <dt className="text-caption text-muted-foreground">{label}</dt>
         <dd className="truncate text-foreground">{value || "—"}</dd>

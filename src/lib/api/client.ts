@@ -14,7 +14,9 @@
 import { clearSession, getToken } from "@/lib/auth/session";
 
 /** Overridable at build time; the dev default matches the backend's own PORT. */
-const BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+const BASE_URL = (
+  import.meta.env.VITE_API_URL ?? "http://localhost:8080"
+).replace(/\/+$/, "");
 
 export const API_BASE_URL = BASE_URL;
 
@@ -35,7 +37,12 @@ export class ApiError extends Error {
   readonly code: string;
   readonly details: unknown[];
 
-  constructor(status: number, code: string, message: string, details: unknown[] = []) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    details: unknown[] = [],
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
@@ -76,14 +83,19 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
   return qs ? `${url}?${qs}` : url;
 }
 
-async function request(path: string, options: RequestOptions = {}): Promise<Response> {
+async function request(
+  path: string,
+  options: RequestOptions = {},
+): Promise<Response> {
   const { method = "GET", body, query, auth = true, signal } = options;
 
   const headers: Record<string, string> = {};
-  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
 
   // FormData must set its own Content-Type so the multipart boundary survives.
-  if (body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
+  if (body !== undefined && !isFormData)
+    headers["Content-Type"] = "application/json";
 
   if (auth) {
     const token = getToken();
@@ -94,14 +106,20 @@ async function request(path: string, options: RequestOptions = {}): Promise<Resp
     return await fetch(buildUrl(path, query), {
       method,
       headers,
-      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
+      body:
+        body === undefined
+          ? undefined
+          : isFormData
+            ? body
+            : JSON.stringify(body),
       // Better Auth also sets a session cookie; sending it keeps a browser
       // session working even if localStorage was cleared.
       credentials: "include",
       signal,
     });
   } catch (cause) {
-    if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
+    if (cause instanceof DOMException && cause.name === "AbortError")
+      throw cause;
     throw new ApiError(0, "NETWORK_ERROR", NETWORK_ERROR_MESSAGE);
   }
 }
@@ -153,28 +171,39 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Call the application REST under `/api/v1` and return the unwrapped `data`.
  * Use `apiFetchPaged` when the `pagination` block is needed too.
  */
-export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const { data } = await apiFetchPaged<T>(path, options);
   return data;
 }
 
-export async function apiFetchPaged<T>(
+export async function apiFetchPaged<T, M = unknown>(
   path: string,
   options: RequestOptions = {},
-): Promise<{ data: T; message?: string; pagination?: ApiPagination }> {
+): Promise<{
+  data: T;
+  message?: string;
+  pagination?: ApiPagination;
+  meta?: M;
+}> {
   const res = await request(`/api/v1${path}`, options);
   const payload = await readJson(res);
 
   if (!res.ok) {
     if (res.status === 401) handleUnauthorized();
-    const error = isRecord(payload) && isRecord(payload.error) ? payload.error : {};
+    const error =
+      isRecord(payload) && isRecord(payload.error) ? payload.error : {};
     if (res.status === 403 && error.code === "TENANT_SUBSCRIPTION_EXPIRED") {
       handleTenantAccessLapsed();
     }
     throw new ApiError(
       res.status,
       typeof error.code === "string" ? error.code : "UNKNOWN_ERROR",
-      typeof error.message === "string" ? error.message : `Request failed (${res.status})`,
+      typeof error.message === "string"
+        ? error.message
+        : `Request failed (${res.status})`,
       Array.isArray(error.details) ? error.details : [],
     );
   }
@@ -182,8 +211,10 @@ export async function apiFetchPaged<T>(
   const envelope = isRecord(payload) ? payload : {};
   return {
     data: envelope.data as T,
-    message: typeof envelope.message === "string" ? envelope.message : undefined,
+    message:
+      typeof envelope.message === "string" ? envelope.message : undefined,
     pagination: (envelope.pagination as ApiPagination | undefined) ?? undefined,
+    meta: (envelope.meta as M | undefined) ?? undefined,
   };
 }
 
@@ -194,7 +225,10 @@ export async function apiFetchPaged<T>(
  * as `{message, code}`, so its errors are normalised into the same `ApiError`
  * the rest of the app already handles.
  */
-export async function authFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function authFetch<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const res = await request(`/api/auth${path}`, { auth: true, ...options });
   const payload = await readJson(res);
 
@@ -208,7 +242,9 @@ export async function authFetch<T>(path: string, options: RequestOptions = {}): 
     throw new ApiError(
       res.status,
       typeof body.code === "string" ? body.code : `HTTP_${res.status}`,
-      typeof body.message === "string" ? body.message : `Request failed (${res.status})`,
+      typeof body.message === "string"
+        ? body.message
+        : `Request failed (${res.status})`,
     );
   }
 
