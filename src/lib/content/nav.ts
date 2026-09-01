@@ -45,11 +45,11 @@ export const FOOTER_COLUMNS: { heading: string; links: NavLink[] }[] = [
 export const CONTACT_DETAILS = {
   phone: "0758 704 814",
   email: "hello@nyumbalink.co.ke",
-  location: "Kilifi, Kenya",
+  location: "Coastal Kenya",
 };
 
 export const BRAND_BLURB =
-  "NyumbaLink connects tenants and landlords across Kilifi County with trusted listings and simple subscriptions.";
+  "NyumbaLink connects tenants and landlords across Kenya's coastal counties with trusted listings and simple subscriptions.";
 
 export const SOCIAL_LINKS: {
   label: string;

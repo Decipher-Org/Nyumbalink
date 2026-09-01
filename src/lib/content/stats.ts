@@ -13,7 +13,7 @@ export type Stat = {
 
 export const TRUST_STATS: Stat[] = [
   { value: "1,200+", label: "Active listings", icon: "home" },
-  { value: "20+", label: "Kilifi towns covered", icon: "pin" },
+  { value: "55+", label: "Coastal towns covered", icon: "pin" },
   { value: "5,000+", label: "Happy tenants", icon: "users" },
   { value: "100%", label: "Verified landlords", icon: "shield" },
 ];

@@ -13,12 +13,12 @@ login, and browse are stubbed pending the next milestone (they ship with the
 tenant and landlord dashboards). Nothing on the landing page calls the backend
 yet — all copy, pricing, and stats are static.
 
-| Route | State |
-|---|---|
-| `/` | Landing page — complete |
-| `/signup` | Role chooser — complete (see [Role gate](#role-gate)) |
-| `/signup/details` | Placeholder; holds the routing guard |
-| `/login`, `/browse` | Placeholder stubs so header/CTA links are never dead |
+| Route               | State                                                 |
+| ------------------- | ----------------------------------------------------- |
+| `/`                 | Landing page — complete                               |
+| `/signup`           | Role chooser — complete (see [Role gate](#role-gate)) |
+| `/signup/details`   | Placeholder; holds the routing guard                  |
+| `/login`, `/browse` | Placeholder stubs so header/CTA links are never dead  |
 
 ## Stack
 
@@ -38,12 +38,12 @@ npm install
 npm run dev        # Vite dev server
 ```
 
-| Script | Does |
-|---|---|
-| `npm run dev` | Start the dev server |
-| `npm run build` | Type-check (`tsc -b`) then build to `dist/` |
-| `npm run typecheck` | Types only, no emit |
-| `npm run preview` | Serve the production build locally |
+| Script              | Does                                        |
+| ------------------- | ------------------------------------------- |
+| `npm run dev`       | Start the dev server                        |
+| `npm run build`     | Type-check (`tsc -b`) then build to `dist/` |
+| `npm run typecheck` | Types only, no emit                         |
+| `npm run preview`   | Serve the production build locally          |
 
 Regenerating the favicons (only needed if the logo changes):
 
@@ -83,14 +83,14 @@ Sampled from the mockup and defined once as CSS variables in `src/index.css`
 hardcode a hex. Light and dark are both defined — dark mode is a token swap, not
 a component rewrite.
 
-| Token | Value | Use |
-|---|---|---|
-| `--primary` | deep green `#0E5A46` | logo, primary buttons, CTA band, footer |
-| `--accent` | orange `#F1592A` | key CTAs, "Most popular" badge |
-| `--mint` | `#E8F3EC` | landlord band, selected role card |
-| `--peach` | soft peach | testimonial / accent surfaces |
-| `--surface` | warm off-white | cards raised over the cream ground |
-| `--background` | cream `#FBF9F5` | page ground |
+| Token          | Value                | Use                                     |
+| -------------- | -------------------- | --------------------------------------- |
+| `--primary`    | deep green `#0E5A46` | logo, primary buttons, CTA band, footer |
+| `--accent`     | orange `#F1592A`     | key CTAs, "Most popular" badge          |
+| `--mint`       | `#E8F3EC`            | landlord band, selected role card       |
+| `--peach`      | soft peach           | testimonial / accent surfaces           |
+| `--surface`    | warm off-white       | cards raised over the cream ground      |
+| `--background` | cream `#FBF9F5`      | page ground                             |
 
 ## Role gate
 
@@ -122,7 +122,7 @@ search therefore routes visitors into signup, carrying their criteria in a
 `next` param:
 
 ```
-/signup?role=tenant&next=%2Fbrowse%3Fcounty%3DNaivasha%26minPrice%3D20000%26maxPrice%3D35000
+/signup?role=tenant&next=%2Fbrowse%3Fcounty%3DKilifi%26minPrice%3D20000%26maxPrice%3D35000
 ```
 
 Field values map 1:1 onto the `county` / `minPrice` / `maxPrice` params the API

@@ -47,7 +47,7 @@ export const FAQS: FaqEntry[] = [
   {
     question: "Which towns and counties are covered?",
     answer:
-      "NyumbaLink is live in Kilifi County, covering Kilifi Town, Mtwapa, Malindi, Watamu, Kikambala, Mariakani, Vipingo and the surrounding areas. More counties follow as landlords join.",
+      "NyumbaLink covers the six coastal counties: Kilifi, Mombasa, Kwale, Lamu, Tana River and Taita-Taveta, including their major towns and surrounding areas.",
   },
   {
     question: "What if I need help?",

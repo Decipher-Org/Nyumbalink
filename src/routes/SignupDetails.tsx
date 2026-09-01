@@ -19,7 +19,7 @@ import { loginPath, safeNextPath } from "@/lib/search-params";
 const MIN_PASSWORD_LENGTH = 8;
 
 const ROLE_BLURBS: Record<"TENANT" | "LANDLORD", string> = {
-  TENANT: "Browse homes across Kilifi County and save the ones you like.",
+  TENANT: "Browse homes across Kenya's coastal counties and save the ones you like.",
   LANDLORD: "List your properties and manage units, rent, and vacancies.",
 };
 

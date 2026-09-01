@@ -1,19 +1,30 @@
 import { ArrowLeft, Eye, EyeOff, Info, MapPin, Save, Send } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { toast } from "sonner";
 
 import { DemoBadge } from "@/components/app/DemoBadge";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { ErrorState } from "@/components/app/States";
-import { ImageManager, type ImageManagerValue } from "@/components/landlord/ImageManager";
+import {
+  ImageManager,
+  type ImageManagerValue,
+} from "@/components/landlord/ImageManager";
 import {
   SubscriptionBlockDialog,
   useSubscriptionBlock,
 } from "@/components/landlord/SubscriptionBlock";
 import { UnitManager } from "@/components/landlord/UnitManager";
-import { useLandlordGate, VerificationNotice } from "@/components/landlord/VerificationNotice";
+import {
+  useLandlordGate,
+  VerificationNotice,
+} from "@/components/landlord/VerificationNotice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +52,11 @@ import {
   type PropertyStatus,
   type PropertyWriteInput,
 } from "@/lib/api/types";
-import { COUNTY, KILIFI_TOWNS } from "@/lib/content/kilifi";
+import {
+  COASTAL_COUNTIES,
+  isCoastalCounty,
+  townsForCounty,
+} from "@/lib/content/locations";
 import { formatRentPerMonth } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
 
@@ -74,6 +89,7 @@ import { useAsync } from "@/lib/hooks/use-async";
 type Draft = {
   title: string;
   description: string;
+  county: string;
   town: string;
   estate: string;
   latitude: string;
@@ -83,6 +99,7 @@ type Draft = {
 const EMPTY_DRAFT: Draft = {
   title: "",
   description: "",
+  county: "",
   town: "",
   estate: "",
   latitude: "",
@@ -93,6 +110,7 @@ function toDraft(property: PropertyDetail): Draft {
   return {
     title: property.title,
     description: property.description ?? "",
+    county: property.county,
     town: property.town,
     estate: property.estate ?? "",
     latitude: property.latitude === null ? "" : String(property.latitude),
@@ -107,18 +125,29 @@ function validate(draft: Draft): Record<string, string> {
   const description = draft.description.trim();
   const estate = draft.estate.trim();
 
-  if (title.length < PROPERTY_LIMITS.title.min || title.length > PROPERTY_LIMITS.title.max) {
+  if (!isCoastalCounty(draft.county)) {
+    errors.county = "Choose one of the supported coastal counties.";
+  }
+
+  if (
+    title.length < PROPERTY_LIMITS.title.min ||
+    title.length > PROPERTY_LIMITS.title.max
+  ) {
     errors.title = `Between ${PROPERTY_LIMITS.title.min} and ${PROPERTY_LIMITS.title.max} characters.`;
   }
 
   // Optional, but the server's minimum is 10 — an empty box is cleared, not sent.
-  if (description !== "" && description.length < PROPERTY_LIMITS.description.min) {
+  if (
+    description !== "" &&
+    description.length < PROPERTY_LIMITS.description.min
+  ) {
     errors.description = `At least ${PROPERTY_LIMITS.description.min} characters, or leave it empty.`;
   } else if (description.length > PROPERTY_LIMITS.description.max) {
     errors.description = `At most ${PROPERTY_LIMITS.description.max} characters.`;
   }
 
-  if (draft.town.trim() === "") errors.town = "Choose the town this property is in.";
+  if (draft.town.trim() === "")
+    errors.town = "Choose the town this property is in.";
 
   if (estate !== "" && estate.length < PROPERTY_LIMITS.estate.min) {
     errors.estate = `At least ${PROPERTY_LIMITS.estate.min} characters, or leave it empty.`;
@@ -128,12 +157,17 @@ function validate(draft: Draft): Record<string, string> {
   const hasLng = draft.longitude.trim() !== "";
 
   if (hasLat !== hasLng) {
-    errors[hasLat ? "longitude" : "latitude"] = "Latitude and longitude go together.";
+    errors[hasLat ? "longitude" : "latitude"] =
+      "Latitude and longitude go together.";
   }
 
   if (hasLat) {
     const latitude = Number(draft.latitude);
-    if (!Number.isFinite(latitude) || latitude < KE_BOUNDS.minLat || latitude > KE_BOUNDS.maxLat) {
+    if (
+      !Number.isFinite(latitude) ||
+      latitude < KE_BOUNDS.minLat ||
+      latitude > KE_BOUNDS.maxLat
+    ) {
       errors.latitude = `Must be between ${KE_BOUNDS.minLat} and ${KE_BOUNDS.maxLat}.`;
     }
   }
@@ -155,14 +189,18 @@ function validate(draft: Draft): Record<string, string> {
  * The write payload. `null` clears a field — the only way, since `description`
  * and `estate` have minimum lengths and so reject `""`.
  */
-function toInput(draft: Draft, images: string[] | undefined): PropertyWriteInput {
+function toInput(
+  draft: Draft,
+  images: string[] | undefined,
+): PropertyWriteInput {
   const description = draft.description.trim();
   const estate = draft.estate.trim();
-  const hasCoords = draft.latitude.trim() !== "" && draft.longitude.trim() !== "";
+  const hasCoords =
+    draft.latitude.trim() !== "" && draft.longitude.trim() !== "";
 
   return {
     title: draft.title.trim(),
-    county: COUNTY,
+    county: draft.county,
     town: draft.town.trim(),
     description: description === "" ? null : description,
     estate: estate === "" ? null : estate,
@@ -176,7 +214,11 @@ const TRANSITION_META: Record<
   PropertyStatus,
   { label: string; icon: typeof Eye; description: string } | undefined
 > = {
-  ACTIVE: { label: "Publish", icon: Send, description: "Tenants can find it in search." },
+  ACTIVE: {
+    label: "Publish",
+    icon: Send,
+    description: "Tenants can find it in search.",
+  },
   HIDDEN: {
     label: "Hide",
     icon: EyeOff,
@@ -200,7 +242,10 @@ export default function PropertyEditor() {
   const property = loaded.data ?? null;
 
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
-  const [images, setImages] = useState<ImageManagerValue>({ existing: [], files: [] });
+  const [images, setImages] = useState<ImageManagerValue>({
+    existing: [],
+    files: [],
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -247,7 +292,8 @@ export default function PropertyEditor() {
     const details = err.details as Array<{ field?: string; message?: string }>;
     const mapped: Record<string, string> = {};
     for (const detail of details ?? []) {
-      if (detail?.field && detail.message) mapped[detail.field] = detail.message;
+      if (detail?.field && detail.message)
+        mapped[detail.field] = detail.message;
     }
     if (Object.keys(mapped).length > 0) setErrors(mapped);
   }
@@ -257,7 +303,12 @@ export default function PropertyEditor() {
     setErrors(found);
     if (Object.keys(found).length > 0) {
       toast.error("Some details need fixing.");
-      setSearchParams({ tab: found.latitude || found.longitude ? "location" : "basics" });
+      setSearchParams({
+        tab:
+          found.county || found.town || found.latitude || found.longitude
+            ? "location"
+            : "basics",
+      });
       return;
     }
 
@@ -266,26 +317,36 @@ export default function PropertyEditor() {
       // Only send `images` when the kept set actually changed — an unchanged
       // PATCH would rewrite stored relative paths as absolute URLs for nothing.
       const input = toInput(draft, imagesChanged ? images.existing : undefined);
-      const saved = isNew ? await createProperty(input) : await updateProperty(propertyId!, input);
+      const saved = isNew
+        ? await createProperty(input)
+        : await updateProperty(propertyId!, input);
 
       if (images.files.length > 0) {
         try {
           await uploadPropertyImages(saved.id, images.files);
         } catch (uploadError) {
           const detail =
-            uploadError instanceof ApiError ? uploadError.message : "the upload failed";
-          toast.warning(`Details saved, but the photos didn't upload — ${detail}`);
+            uploadError instanceof ApiError
+              ? uploadError.message
+              : "the upload failed";
+          toast.warning(
+            `Details saved, but the photos didn't upload — ${detail}`,
+          );
           navigate(`/landlord/properties/${saved.id}`, { replace: true });
           loaded.reload();
           return;
         }
       }
 
-      toast.success(isNew ? "Draft saved. Add unit types next." : "Changes saved.");
+      toast.success(
+        isNew ? "Draft saved. Add unit types next." : "Changes saved.",
+      );
       setDirty(false);
 
       if (isNew) {
-        navigate(`/landlord/properties/${saved.id}?tab=units`, { replace: true });
+        navigate(`/landlord/properties/${saved.id}?tab=units`, {
+          replace: true,
+        });
       } else {
         loaded.reload();
       }
@@ -317,7 +378,11 @@ export default function PropertyEditor() {
     setSaving(true);
     try {
       await write();
-      toast.success(next === "ACTIVE" ? "Your listing is live." : "Listing hidden from search.");
+      toast.success(
+        next === "ACTIVE"
+          ? "Your listing is live."
+          : "Listing hidden from search.",
+      );
       loaded.reload();
     } catch (err) {
       // Publishing is the moment `assertPublishable` runs, so this is where a
@@ -327,7 +392,9 @@ export default function PropertyEditor() {
         publishRetry.current = write;
         return;
       }
-      toast.error(err instanceof ApiError ? err.message : "Couldn't change the status.");
+      toast.error(
+        err instanceof ApiError ? err.message : "Couldn't change the status.",
+      );
     } finally {
       setSaving(false);
     }
@@ -344,7 +411,9 @@ export default function PropertyEditor() {
       toast.success("Paid, and your listing is live.");
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.message : "Paid, but publishing failed. Try again.",
+        err instanceof ApiError
+          ? err.message
+          : "Paid, but publishing failed. Try again.",
       );
     } finally {
       loaded.reload();
@@ -423,18 +492,26 @@ export default function PropertyEditor() {
 
       {isArchived ? (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-border bg-surface px-4 py-3.5">
-          <Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+          <Info
+            aria-hidden="true"
+            className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+          />
           <div className="text-body-sm text-muted-foreground">
-            <p className="font-semibold text-foreground">This property is archived</p>
+            <p className="font-semibold text-foreground">
+              This property is archived
+            </p>
             <p className="mt-0.5">
-              Archiving is permanent, so it can't be edited or republished. Create a new listing if
-              you want to advertise it again.
+              Archiving is permanent, so it can't be edited or republished.
+              Create a new listing if you want to advertise it again.
             </p>
           </div>
         </div>
       ) : null}
 
-      <Tabs value={tab} onValueChange={(next) => setSearchParams({ tab: next })}>
+      <Tabs
+        value={tab}
+        onValueChange={(next) => setSearchParams({ tab: next })}
+      >
         <TabsList className="mb-6 w-full justify-start overflow-x-auto">
           <TabsTrigger value="basics">Details</TabsTrigger>
           <TabsTrigger value="location">Location</TabsTrigger>
@@ -488,8 +565,30 @@ export default function PropertyEditor() {
         <TabsContent value="location" className="space-y-6">
           <section className="space-y-5 rounded-xl border border-border bg-card p-5">
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="County" htmlFor="county" hint="Kilifi only, for now">
-                <Input id="county" value={COUNTY} disabled readOnly />
+              <Field label="County" htmlFor="county" error={errors.county}>
+                <Select
+                  value={draft.county}
+                  disabled={readOnly}
+                  onValueChange={(value) => {
+                    set("county", value);
+                    set("town", "");
+                  }}
+                >
+                  <SelectTrigger
+                    id="county"
+                    className="w-full"
+                    aria-invalid={Boolean(errors.county)}
+                  >
+                    <SelectValue placeholder="Choose a coastal county" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COASTAL_COUNTIES.map((county) => (
+                      <SelectItem key={county} value={county}>
+                        {county}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
 
               <Field label="Town" htmlFor="town" error={errors.town}>
@@ -498,11 +597,15 @@ export default function PropertyEditor() {
                   disabled={readOnly}
                   onValueChange={(value) => set("town", value)}
                 >
-                  <SelectTrigger id="town" className="w-full" aria-invalid={Boolean(errors.town)}>
+                  <SelectTrigger
+                    id="town"
+                    className="w-full"
+                    aria-invalid={Boolean(errors.town)}
+                  >
                     <SelectValue placeholder="Choose a town" />
                   </SelectTrigger>
                   <SelectContent>
-                    {KILIFI_TOWNS.map((town) => (
+                    {townsForCounty(draft.county).map((town) => (
                       <SelectItem key={town} value={town}>
                         {town}
                       </SelectItem>
@@ -533,16 +636,23 @@ export default function PropertyEditor() {
           <section className="space-y-5 rounded-xl border border-border bg-card p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-body font-semibold text-foreground">Map coordinates</p>
+                <p className="text-body font-semibold text-foreground">
+                  Map coordinates
+                </p>
                 <p className="text-body-sm text-muted-foreground">
-                  Optional, and saved as a pair. Stored now so the map works the day it ships.
+                  Optional, and saved as a pair. Stored now so the map works the
+                  day it ships.
                 </p>
               </div>
               <DemoBadge feature="map" />
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Latitude" htmlFor="latitude" error={errors.latitude}>
+              <Field
+                label="Latitude"
+                htmlFor="latitude"
+                error={errors.latitude}
+              >
                 <Input
                   id="latitude"
                   value={draft.latitude}
@@ -553,7 +663,11 @@ export default function PropertyEditor() {
                   onChange={(event) => set("latitude", event.target.value)}
                 />
               </Field>
-              <Field label="Longitude" htmlFor="longitude" error={errors.longitude}>
+              <Field
+                label="Longitude"
+                htmlFor="longitude"
+                error={errors.longitude}
+              >
                 <Input
                   id="longitude"
                   value={draft.longitude}
@@ -568,19 +682,24 @@ export default function PropertyEditor() {
 
             <p className="flex items-start gap-2 text-caption text-muted-foreground">
               <MapPin aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-              Open the spot in Google Maps, long-press it, and copy the two numbers it shows.
+              Open the spot in Google Maps, long-press it, and copy the two
+              numbers it shows.
             </p>
           </section>
         </TabsContent>
 
         <TabsContent value="photos">
           <section className="rounded-xl border border-border bg-card p-5">
-            <ImageManager value={images} onChange={setImages} disabled={readOnly} />
+            <ImageManager
+              value={images}
+              onChange={setImages}
+              disabled={readOnly}
+            />
             {images.files.length > 0 ? (
               <p className="mt-4 rounded-lg bg-secondary px-4 py-3 text-body-sm text-secondary-foreground">
                 {images.files.length} new{" "}
-                {images.files.length === 1 ? "photo uploads" : "photos upload"} when you press{" "}
-                {isNew ? "Save draft" : "Save"}.
+                {images.files.length === 1 ? "photo uploads" : "photos upload"}{" "}
+                when you press {isNew ? "Save draft" : "Save"}.
               </p>
             ) : null}
           </section>
@@ -600,7 +719,9 @@ export default function PropertyEditor() {
                 <p className="mt-4 text-body-sm text-muted-foreground">
                   Tenants will see this listing from{" "}
                   <span className="font-semibold text-foreground">
-                    {formatRentPerMonth(Math.min(...property.units.map((unit) => unit.rent)))}
+                    {formatRentPerMonth(
+                      Math.min(...property.units.map((unit) => unit.rent)),
+                    )}
                   </span>
                   .
                 </p>
@@ -611,7 +732,9 @@ export default function PropertyEditor() {
       </Tabs>
 
       {dirty && !readOnly ? (
-        <p className="mt-6 text-body-sm text-muted-foreground">You have unsaved changes.</p>
+        <p className="mt-6 text-body-sm text-muted-foreground">
+          You have unsaved changes.
+        </p>
       ) : null}
 
       <SubscriptionBlockDialog
@@ -648,10 +771,13 @@ function UnstorableSpecs() {
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-body font-semibold text-foreground">Property specifications</p>
+          <p className="text-body font-semibold text-foreground">
+            Property specifications
+          </p>
           <p className="text-body-sm text-muted-foreground">
-            Not saved yet — these fields don't exist on a property, so they're shown for reference
-            only. Put the same information in the description for now.
+            Not saved yet — these fields don't exist on a property, so they're
+            shown for reference only. Put the same information in the
+            description for now.
           </p>
         </div>
         <DemoBadge feature="propertySpecs" />
@@ -692,10 +818,14 @@ function Field({
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-2">
         <Label htmlFor={htmlFor}>{label}</Label>
-        {hint && !error ? <span className="text-caption text-muted-foreground">{hint}</span> : null}
+        {hint && !error ? (
+          <span className="text-caption text-muted-foreground">{hint}</span>
+        ) : null}
       </div>
       {children}
-      {error ? <p className="text-caption text-destructive-strong">{error}</p> : null}
+      {error ? (
+        <p className="text-caption text-destructive-strong">{error}</p>
+      ) : null}
     </div>
   );
 }

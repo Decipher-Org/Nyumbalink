@@ -10,21 +10,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { COUNTY, KILIFI_TOWNS, POPULAR_TOWNS, PRICE_BRACKETS } from "@/lib/content/locations";
+import {
+  COASTAL_COUNTIES,
+  POPULAR_LOCATIONS,
+  PRICE_BRACKETS,
+  townsForCounty,
+  type CoastalCounty,
+} from "@/lib/content/locations";
 import { browsePath, signupPath } from "@/lib/search-params";
 
 export function Hero() {
   const navigate = useNavigate();
+  const [county, setCounty] = useState<CoastalCounty | "">("");
   const [town, setTown] = useState<string>("");
   const [priceBracketId, setPriceBracketId] = useState<string>("");
 
   /**
    * Browsing needs a session, so a visitor's criteria ride along in `next` and
-   * are applied to /browse once they have an account. County is not part of the
-   * form — `browsePath` pins it to the launch county for every search.
+   * are applied to /browse once they have an account.
    */
-  function runSearch(nextTown: string = town) {
+  function runSearch(nextTown: string = town, nextCounty: CoastalCounty | "" = county) {
     const destination = browsePath({
+      county: nextCounty || undefined,
       town: nextTown || undefined,
       priceBracketId: priceBracketId || undefined,
     });
@@ -50,28 +57,56 @@ export function Hero() {
       <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div className="max-w-xl">
           <h1 className="font-serif text-4xl leading-tight font-semibold text-white sm:text-5xl lg:text-6xl">
-            Find your next home in {COUNTY}
+            Find your next home on Kenya&apos;s coast
           </h1>
           <p className="mt-5 text-base leading-relaxed text-white/85 sm:text-lg">
-            NyumbaLink connects tenants and landlords across {COUNTY} County — from Mtwapa to
-            Malindi. Verified listings, updated daily. Connect directly with landlords you trust.
+            NyumbaLink connects tenants and landlords across Kilifi, Mombasa, Kwale, Lamu, Tana
+            River and Taita-Taveta. Verified listings, updated daily.
           </p>
         </div>
 
-        <div className="mt-9 max-w-3xl rounded-2xl bg-card p-4 shadow-xl ring-1 ring-black/5 sm:p-5">
+        <div className="mt-9 max-w-5xl rounded-2xl bg-card p-4 shadow-xl ring-1 ring-black/5 sm:p-5">
           <form
             onSubmit={(event) => {
               event.preventDefault();
               runSearch();
             }}
-            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end"
           >
+            <div className="flex-1">
+              <label
+                htmlFor="hero-county"
+                className="mb-1.5 block text-xs font-medium text-muted-foreground"
+              >
+                County
+              </label>
+              <Select
+                value={county || "all"}
+                onValueChange={(value) => {
+                  setCounty(value === "all" ? "" : (value as CoastalCounty));
+                  setTown("");
+                }}
+              >
+                <SelectTrigger id="hero-county" className="w-full">
+                  <SelectValue placeholder="Any coastal county" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All coastal counties</SelectItem>
+                  {COASTAL_COUNTIES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex-1">
               <label
                 htmlFor="hero-town"
                 className="mb-1.5 block text-xs font-medium text-muted-foreground"
               >
-                Where in {COUNTY} County?
+                Town or area
               </label>
               <div className="relative">
                 <MapPin
@@ -83,7 +118,7 @@ export function Hero() {
                     <SelectValue placeholder="Any town or area" />
                   </SelectTrigger>
                   <SelectContent>
-                    {KILIFI_TOWNS.map((option) => (
+                    {townsForCounty(county).map((option) => (
                       <SelectItem key={option} value={option}>
                         {option}
                       </SelectItem>
@@ -128,17 +163,18 @@ export function Hero() {
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">Popular areas:</span>
-            {POPULAR_TOWNS.map((place) => (
+            {POPULAR_LOCATIONS.map((place) => (
               <button
-                key={place}
+                key={`${place.county}-${place.town}`}
                 type="button"
                 onClick={() => {
-                  setTown(place);
-                  runSearch(place);
+                  setCounty(place.county);
+                  setTown(place.town);
+                  runSearch(place.town, place.county);
                 }}
                 className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
               >
-                {place}
+                {place.town}, {place.county}
               </button>
             ))}
           </div>
