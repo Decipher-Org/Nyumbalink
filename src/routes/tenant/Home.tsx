@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listProperties } from "@/lib/api/properties";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { COUNTY, POPULAR_TOWNS } from "@/lib/content/kilifi";
-import { PRICE_BRACKETS } from "@/lib/content/locations";
+import { POPULAR_LOCATIONS, PRICE_BRACKETS } from "@/lib/content/locations";
 import { formatDateTime, formatTimeLeft } from "@/lib/format";
 import { useAsync } from "@/lib/hooks/use-async";
 import { tenantSearchPath } from "@/lib/search-params";
@@ -41,7 +40,7 @@ export default function TenantHome() {
   const [query, setQuery] = useState("");
 
   const newest = useAsync(
-    (signal) => listProperties({ county: COUNTY, limit: NEWEST_LIMIT }, signal),
+    (signal) => listProperties({ limit: NEWEST_LIMIT }, signal),
     [],
   );
 
@@ -62,7 +61,7 @@ export default function TenantHome() {
           {firstName ? `Karibu, ${firstName}.` : "Karibu."}
         </h1>
         <p className="mt-1 text-body text-muted-foreground">
-          Find your next home in {COUNTY} County.
+          Find your next home across Kenya&apos;s coastal counties.
         </p>
 
         <form onSubmit={submitSearch} className="mt-5 flex gap-2">
@@ -91,13 +90,13 @@ export default function TenantHome() {
           Popular towns
         </h2>
         <ul className="mt-3 flex flex-wrap gap-2">
-          {POPULAR_TOWNS.map((town) => (
-            <li key={town}>
+          {POPULAR_LOCATIONS.map((location) => (
+            <li key={`${location.county}-${location.town}`}>
               <Link
-                to={tenantSearchPath({ town })}
+                to={tenantSearchPath(location)}
                 className="inline-flex min-h-11 items-center rounded-full border border-border bg-card px-4 text-body-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
               >
-                {town}
+                {location.town}, {location.county}
               </Link>
             </li>
           ))}
@@ -126,7 +125,7 @@ export default function TenantHome() {
         <div className="flex items-end justify-between gap-3">
           <div>
             <h2 id="newest" className="text-h3 text-foreground">
-              Newest in {COUNTY}
+              Newest on the coast
             </h2>
             <p className="mt-0.5 text-body-sm text-muted-foreground">
               The most recently published listings.
@@ -159,7 +158,7 @@ export default function TenantHome() {
             <EmptyState
               icon={HomeIcon}
               title="No listings yet"
-              body={`Nothing has been published in ${COUNTY} County so far. Check back soon — landlords are still coming on board.`}
+              body="Nothing has been published across the coastal counties so far. Check back soon — landlords are still coming on board."
             />
           )}
         </div>
@@ -203,8 +202,8 @@ function PassStrip() {
           Your day pass — {formatTimeLeft(expiresAt)}
         </p>
         <p className="mt-0.5 text-body-sm text-muted-foreground">
-          Every listing in {COUNTY} County is open to you until {formatDateTime(expiresAt)}. Buying
-          another pass before then adds to the time you have left rather than replacing it.
+          Every listing across the coastal counties is open to you until {formatDateTime(expiresAt)}.
+          Buying another pass before then adds to the time you have left rather than replacing it.
         </p>
       </div>
     </section>

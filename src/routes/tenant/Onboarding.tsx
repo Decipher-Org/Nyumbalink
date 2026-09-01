@@ -17,7 +17,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
 import { createTenantProfile, getMyTenantProfile } from "@/lib/api/profiles";
 import type { Gender } from "@/lib/api/types";
-import { COUNTY } from "@/lib/content/kilifi";
 import { useAsync } from "@/lib/hooks/use-async";
 
 /**
@@ -193,7 +192,7 @@ export default function TenantOnboarding() {
         </section>
 
         {/*
-          This read "Browsing every listing in Kilifi County is free while we get
+          This previously claimed browsing every coastal listing was free while we get
           started. There's nothing to pay and nothing held back." Onboarding is the last
           screen before the gate, so that sentence was setting up the paywall on the very
           next click to look like a bait-and-switch.
@@ -205,9 +204,9 @@ export default function TenantOnboarding() {
         <div className="flex items-start gap-3 rounded-xl border border-border bg-surface px-4 py-3.5">
           <Sparkles aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
           <p className="text-body-sm text-muted-foreground">
-            Next you'll pick up a day pass — one M-Pesa payment opens every listing in {COUNTY}{" "}
-            County for 24 hours, with nothing held back. It simply lapses when the day is up, so
-            there is nothing to cancel.
+            Next you'll pick up a day pass — one M-Pesa payment opens every listing across the
+            coastal counties for 24 hours, with nothing held back. It simply lapses when the day
+            is up, so there is nothing to cancel.
           </p>
         </div>
 

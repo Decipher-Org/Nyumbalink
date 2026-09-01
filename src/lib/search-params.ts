@@ -1,21 +1,22 @@
-import { COUNTY, PRICE_BRACKETS } from "@/lib/content/locations";
+import { PRICE_BRACKETS, type CoastalCounty } from "@/lib/content/locations";
 
 export type SearchCriteria = {
-  /** Town within Kilifi. County is implicit — see `kilifi.ts`. */
+  county?: CoastalCounty;
   town?: string;
   priceBracketId?: string;
 };
 
 /**
  * Turns hero-search criteria into the query string `GET /properties` expects.
- * `county` is always pinned to the launch county so a link pasted or bookmarked
- * from the hero stays scoped even once other counties open. Price brackets
- * expand into the minPrice/maxPrice params the API supports.
+ * County and town remain explicit in shareable URLs. Price brackets expand into
+ * the minPrice/maxPrice params the API supports.
  */
 export function criteriaToBrowseQuery(criteria: SearchCriteria): string {
   const params = new URLSearchParams();
 
-  params.set("county", COUNTY);
+  if (criteria.county) {
+    params.set("county", criteria.county);
+  }
 
   if (criteria.town) {
     params.set("town", criteria.town);

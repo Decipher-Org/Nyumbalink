@@ -20,7 +20,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { searchProperties, type SearchParams } from "@/lib/api/properties";
-import { COUNTY, KILIFI_TOWNS } from "@/lib/content/kilifi";
+import {
+  COASTAL_COUNTIES,
+  townsForCounty,
+} from "@/lib/content/locations";
 import { useAsync } from "@/lib/hooks/use-async";
 import { formatKes } from "@/lib/format";
 
@@ -43,8 +46,7 @@ import { formatKes } from "@/lib/format";
  * the whole catalogue on the server. The search endpoint also provides
  * geolocation distance sorting and computes distanceKm for each result.
  *
- * `county` is pinned to Kilifi on every request — the launch is scoped to one
- * county, so it is never a user choice.
+ * County and town are user-selectable across NyumbaLink's coastal service area.
  */
 
 const PAGE_SIZE = 12;
@@ -53,6 +55,7 @@ const BEDROOM_OPTIONS = ["1", "2", "3", "4", "5"] as const;
 
 type Filters = {
   q: string;
+  county: string;
   town: string;
   estate: string;
   minPrice: string;
@@ -68,6 +71,7 @@ type Filters = {
 
 const EMPTY: Filters = {
   q: "",
+  county: "",
   town: "",
   estate: "",
   minPrice: "",
@@ -84,6 +88,7 @@ const EMPTY: Filters = {
 function readFilters(params: URLSearchParams): Filters {
   return {
     q: params.get("q") ?? "",
+    county: params.get("county") ?? "",
     town: params.get("town") ?? "",
     estate: params.get("estate") ?? "",
     minPrice: params.get("minPrice") ?? "",
@@ -117,7 +122,7 @@ export default function TenantSearch() {
   function toSearchParams(): SearchParams {
     return {
       q: q || undefined,
-      county: COUNTY,
+      county: filters.county || undefined,
       town: filters.town || undefined,
       estate: filters.estate || undefined,
       bedrooms: filters.bedrooms ? (isNaN(Number(filters.bedrooms)) ? filters.bedrooms : Number(filters.bedrooms)) : undefined,
@@ -173,7 +178,7 @@ export default function TenantSearch() {
       <div>
         <h1 className="text-h1 text-foreground">Search</h1>
         <p className="mt-1 text-body-sm text-muted-foreground">
-          Every listing in {COUNTY} County.
+          Explore verified listings across Kenya&apos;s coastal counties.
         </p>
       </div>
 
@@ -356,8 +361,34 @@ export default function TenantSearch() {
                 </div>
               </fieldset>
 
-              {/* Existing filters: Town, Estate, Price, Bedrooms */}
+              {/* Existing filters: County, Town, Estate, Price, Bedrooms */}
               <Separator />
+
+              <div className="space-y-1.5">
+                <Label htmlFor="filter-county">County</Label>
+                <Select
+                  value={draft.county || "any"}
+                  onValueChange={(value) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      county: value === "any" ? "" : value,
+                      town: "",
+                    }))
+                  }
+                >
+                  <SelectTrigger id="filter-county" className="w-full">
+                    <SelectValue placeholder="Any coastal county" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">All coastal counties</SelectItem>
+                    {COASTAL_COUNTIES.map((county) => (
+                      <SelectItem key={county} value={county}>
+                        {county}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="filter-town">Town</Label>
@@ -375,7 +406,7 @@ export default function TenantSearch() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="any">Any town</SelectItem>
-                    {KILIFI_TOWNS.map((town) => (
+                    {townsForCounty(draft.county).map((town) => (
                       <SelectItem key={town} value={town}>
                         {town}
                       </SelectItem>
@@ -556,7 +587,7 @@ export default function TenantSearch() {
           body={
             q || activeChips.length > 0
               ? "Try a wider price range, a different town, or clear the filters."
-              : `Nothing has been published in ${COUNTY} County so far.`
+              : "Nothing has been published across the coastal counties so far."
           }
           action={
             activeChips.length > 0 || q ? (
@@ -619,6 +650,13 @@ type Chip = { key: string; label: string; clear: Partial<Filters> };
 function describeFilters(filters: Filters): Chip[] {
   const chips: Chip[] = [];
 
+  if (filters.county) {
+    chips.push({
+      key: "county",
+      label: `${filters.county} County`,
+      clear: { county: "", town: "" },
+    });
+  }
   if (filters.town) {
     chips.push({ key: "town", label: filters.town, clear: { town: "" } });
   }
