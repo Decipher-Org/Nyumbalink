@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { FormError } from "@/components/auth/FormError";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { Button } from "@/components/ui/button";
@@ -13,10 +14,6 @@ import { safeNextPath, signupPath } from "@/lib/search-params";
 
 /**
  * Sign-in.
- *
- * No social buttons: `socialProviders` is not configured on the backend, so a
- * Google or Apple button would be decoration that 404s. They are omitted rather
- * than rendered disabled — a greyed-out button reads as "temporarily broken".
  *
  * `?next=` is honoured so a hero search, or a redirect out of a protected route,
  * resumes where it left off; without one, the role decides the landing page.
@@ -76,6 +73,7 @@ export default function Login() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <FormError error={error} />
+        <GoogleSignInButton next={next} disabled={submitting} />
 
         {needsVerification ? (
           <Button asChild variant="outline" className="w-full">

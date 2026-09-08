@@ -1,19 +1,35 @@
 /**
  * Authentication calls against Better Auth (`/api/auth/*`).
  *
- * The order matters and is not negotiable: the backend runs with
- * `autoSignIn: false` and `requireEmailVerification: true`, so **sign-up returns
- * no token**. The only working sequence is
+ * For email/password, the backend runs with `autoSignIn: false` and
+ * `requireEmailVerification: true`, so email sign-up returns no token:
  *
  *     signUp -> (OTP arrives by email) -> verifyEmail -> signIn
+ *
+ * Google uses a redirect and one-time ticket exchange instead.
  *
  * `role` is always sent explicitly, because the backend coerces an unspecified
  * or unrecognised role to `TENANT` without complaint — a landlord who signed up
  * without it would silently get the wrong account.
  */
 
-import { authFetch } from "./client";
-import type { AuthResponse, Role, SessionResponse } from "./types";
+import { API_BASE_URL, authFetch } from "./client";
+import type { AuthResponse, AuthUser, Role, SessionResponse } from "./types";
+
+export function signInWithGoogle(role?: "TENANT" | "LANDLORD", next?: string | null) {
+  const callback = new URL("/auth/callback", window.location.origin);
+  if (next) callback.searchParams.set("next", next);
+  const start = new URL(`${API_BASE_URL}/api/auth/google/start`);
+  start.searchParams.set("callbackURL", callback.href);
+  if (role) start.searchParams.set("role", role);
+  window.location.assign(start.href);
+}
+
+export function exchangeGoogleToken(token: string) {
+  return authFetch<{ session: { token: string }; user: AuthUser }>("/one-time-token/verify", {
+    method: "POST", body: { token }, auth: false,
+  });
+}
 
 export type SignUpInput = {
   name: string;
