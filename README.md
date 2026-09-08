@@ -163,3 +163,11 @@ point.
 
 See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for first-time setup and custom-domain
 steps.
+
+## Google authentication
+
+Both login and signup include **Continue with Google**. Configure the backend
+Google OAuth credentials and allowed origins as described in
+`../propertyHubBackend/README.md` (Google sign-in and sign-up). The frontend only
+needs its existing `VITE_API_URL`; no Google secret or SDK belongs in this app.
+Ensure production hosting rewrites `/auth/callback` to the SPA entry point.
