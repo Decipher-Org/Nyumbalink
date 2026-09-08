@@ -15,6 +15,7 @@ import VerifyEmail from "@/routes/VerifyEmail";
 import ForgotPassword from "@/routes/ForgotPassword";
 import Browse from "@/routes/Browse";
 import Login from "@/routes/Login";
+import AuthCallback from "@/routes/AuthCallback";
 import LandlordDashboard from "@/routes/landlord/Dashboard";
 import LandlordProperties from "@/routes/landlord/Properties";
 import PropertyEditor from "@/routes/landlord/PropertyEditor";
@@ -43,6 +44,7 @@ export default function App() {
           <FavoritesProvider>
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
 
               {/* Auth screens bounce a signed-in visitor to their dashboard. */}
               <Route element={<GuestOnlyRoute />}>

@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { FormError } from "@/components/auth/FormError";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { Badge } from "@/components/ui/badge";
@@ -142,6 +143,7 @@ export default function SignupDetails() {
           browser can't know: cross-field mismatches and the server's replies. */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <FormError error={error} />
+        <GoogleSignInButton role={role} next={next} disabled={submitting} />
 
         <div className="space-y-1.5">
           <Label htmlFor="signup-name">Full name</Label>

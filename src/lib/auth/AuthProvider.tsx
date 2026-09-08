@@ -38,6 +38,7 @@ type AuthState = {
   /** True until the stored token has been checked against the server. */
   loading: boolean;
   signIn: (email: string, password: string) => Promise<AuthUser>;
+  completeGoogleSignIn: (token: string) => Promise<AuthUser>;
   signOut: () => Promise<void>;
   /** Re-read the profile after onboarding or an admin approval. */
   refreshProfile: () => Promise<void>;
@@ -166,6 +167,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loadLandlordProfile],
   );
 
+  const completeGoogleSignIn = useCallback(async (token: string) => {
+    const id = ++requestId.current;
+    const result = await authApi.exchangeGoogleToken(token);
+    if (!result.session?.token || !result.user) {
+      throw new Error("Google sign-in did not return a session. Please try again.");
+    }
+    if (id !== requestId.current) throw new Error("Sign-in was interrupted. Please try again.");
+    setToken(result.session.token);
+    setUser(result.user);
+    await loadLandlordProfile(result.user);
+    if (id === requestId.current) setLoading(false);
+    return result.user;
+  }, [loadLandlordProfile]);
+
   const signOut = useCallback(async () => {
     requestId.current++;
     try {
@@ -192,8 +207,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthState>(
-    () => ({ user, landlordProfile, loading, signIn, signOut, refreshProfile, refreshUser }),
-    [user, landlordProfile, loading, signIn, signOut, refreshProfile, refreshUser],
+    () => ({ user, landlordProfile, loading, signIn, completeGoogleSignIn, signOut, refreshProfile, refreshUser }),
+    [user, landlordProfile, loading, signIn, completeGoogleSignIn, signOut, refreshProfile, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
